@@ -1,0 +1,46 @@
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "episcopeenvigado"
+version = "0.0.1"
+description = "Es un proyecto de anal\u00edtica predictiva que aprovecha los registros individuales de prestaci\u00f3n de servicios de salud \u2014los RIPS 2023 y 2024\u2014 para detectar patrones en los diagn\u00f3sticos CIE-10 y anticipar tendencias. En otras palabras, nos permite ver lo que est\u00e1 por ocurrir."
+authors = [
+  { name = "Analisis de Datos Innovador G472 - Equipo 4" },
+]
+
+readme = "README.md"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    
+]
+dependencies = [
+    "black",
+    "flake8",
+    "isort",
+    "loguru",
+    "mkdocs",
+    "pip",
+    "python-dotenv",
+    "tqdm",
+    "typer",
+]
+requires-python = "~=3.13.0"
+
+[tool.black]
+line-length = 99
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.venv
+)/
+'''
+
+[tool.isort]
+profile = "black"
+known_first_party = ["episcopeenvigado"]
+force_sort_within_sections = true
+
+

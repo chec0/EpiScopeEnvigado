@@ -1,6 +1,4 @@
 # Importar bibliotecas necesarias
-import pandas as pd
-import re
 from pathlib import Path
 
 from loguru import logger
@@ -8,6 +6,9 @@ from tqdm import tqdm
 import typer
 
 from episcopeenvigado.config import PROCESSED_DATA_DIR, RAW_DATA_DIR
+import etl_modules.extractor_data as et
+import etl_modules.transform_data as td
+import etl_modules.load_data as ld
 
 app = typer.Typer()
 
@@ -20,11 +21,12 @@ def main(
     # ----------------------------------------------
 ):
     # ---  AQUI COMIENZA EL PROGRAMA ---
-    df = cargar_datos(input_path)
+    df = et.cargar_datos(input_path)
 
-    df_limpio = limpieza_datos(df)
+    df_limpio = td.limpieza_datos(df)
 
-    # crear_base_datos(df_limpio)
+    ld.preparacion_dataset(df_limpio)
+    ld.crear_base_datos(df)
 
     # ---- REPLACE THIS WITH YOUR OWN CODE ----
     logger.info("Processing dataset...")

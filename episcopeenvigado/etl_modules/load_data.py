@@ -5,6 +5,7 @@ import re
 from io import StringIO
 from sqlalchemy import create_engine, text
 from urllib.parse import quote_plus
+from etl_modules._config import MYSQL_USER, MYSQL_HOST, MYSQL_PORT, MYSQL_DB, MYSQL_PASSWORD_URL   
 
 # **Creación de Base de Datos**
 def preparacion_dataset(df):
@@ -131,17 +132,6 @@ def preparacion_dataset(df):
     return True
 
 def crear_base_datos(df)
-    # =========================
-    # 0) PARÁMETROS DE CONEXIÓN
-    # =========================
-    MYSQL_USER = "root"
-    MYSQL_PASSWORD = "StrongP@ssword1"      # si tiene caracteres especiales, se codifica abajo
-    MYSQL_HOST = "127.0.0.1"
-    MYSQL_PORT = 3306
-    MYSQL_DB   = "salud_dw"                 # nombre de tu base
-
-    # Codifica el password para URL (escapa @, :, /, etc.)
-    MYSQL_PASSWORD_URL = quote_plus(MYSQL_PASSWORD)
 
     # Conexión SIN base (para crearla)
     engine_root = create_engine(

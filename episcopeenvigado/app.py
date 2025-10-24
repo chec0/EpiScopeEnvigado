@@ -22,11 +22,9 @@ def main(
 ):
     # ---  AQUI COMIENZA EL PROGRAMA ---
     df = et.cargar_datos(input_path)
-
     df_limpio = td.limpieza_datos(df)
 
-    ld.preparacion_dataset(df_limpio)
-    ld.crear_base_datos(df)
+    ld.crear_base_datos(df_limpio)
 
     # ---- REPLACE THIS WITH YOUR OWN CODE ----
     logger.info("Processing dataset...")

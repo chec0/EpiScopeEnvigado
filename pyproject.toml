@@ -25,6 +25,8 @@ dependencies = [
     "python-dotenv",
     "tqdm",
     "typer",
+    "pandas",
+    "sqlalchemy>=2.0.44",
 ]
 requires-python = "~=3.13.0"
 

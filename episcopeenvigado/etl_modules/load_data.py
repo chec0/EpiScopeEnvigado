@@ -8,7 +8,7 @@ from urllib.parse import quote_plus
 from etl_modules._config import MYSQL_USER, MYSQL_HOST, MYSQL_PORT, MYSQL_DB, MYSQL_PASSWORD_URL   
 
 # **Creación de Base de Datos**
-def preparacion_dataset(df):
+def preparacion_dataset(df, engine_db):
     # =========================
     # 3) CATÁLOGOS (OPCIONALES) PARA ENRIQUECER DIMENSIONES
     #    (NO se guardan en la tabla de hechos; sirven para las dims)
@@ -128,6 +128,31 @@ def preparacion_dataset(df):
     fact['municipio_id']     = fact['MUNICIPIO_DANE'].map(map_muni)
     fact['edad_id']          = list(zip(fact['EDAD'].astype('Int64'), fact['UNIDAD EDAD'].astype('Int64')))
     fact['edad_id']          = fact['edad_id'].map(map_edad)
+
+    # =========================
+    # 8) CARGA DE DIMENSIONES Y HECHOS
+    # =========================
+    # Usamos to_sql con if_exists='append'; como ya existen las tablas, respeta las columnas
+    try:
+        with engine_db.begin() as txn:
+            dim_via.to_sql('dim_via_ingreso', con=txn, if_exists='append', index=False)
+            dim_estado.to_sql('dim_estado_salida', con=txn, if_exists='append', index=False)
+            dim_causa.to_sql('dim_causa_ext', con=txn, if_exists='append', index=False)
+            dim_depto.to_sql('dim_departamento', con=txn, if_exists='append', index=False)
+            dim_muni.to_sql('dim_municipio', con=txn, if_exists='append', index=False)
+            dim_edad.to_sql('dim_edad', con=txn, if_exists='append', index=False)
+
+            # Selección de columnas para la tabla de hechos
+            fact_cols = [
+                'Cod_IPS','ID','Fecha_Ingreso','Fecha_Egreso','Duracion_Dias',
+                'via_ingreso_id','estado_salida_id','edad_id','municipio_id','causa_ext_id','departamento_id',
+                'VIA INGRESO','Estado_Salida','EDAD','UNIDAD EDAD','MUNICIPIO','CAUSA EXT','DEPARTAMENTO',
+                'MUNICIPIO_DANE','DIAGNOSTICO INGRESO','Cod_Dx_Ppal_Egreso',
+                'DIAG EGRESO REL 1','DIAG EGRESO REL 2','DIAG EGRESO REL 3','DIAG COMPLICACION','DIAG MUERTE','AÑO'
+            ]
+            fact[fact_cols].to_sql('fact_atenciones', con=txn, if_exists='append', index=False)
+    except Exception as e:
+        print(f"Ocurrió otro error: {e}")
 
     return True
 
@@ -255,27 +280,8 @@ def crear_base_datos(df)
             for sub in [s for s in stmt.split(';') if s.strip()]:
                 conn.execute(text(sub + ';'))
 
-    # =========================
-    # 8) CARGA DE DIMENSIONES Y HECHOS
-    # =========================
-    # Usamos to_sql con if_exists='append'; como ya existen las tablas, respeta las columnas
-    with engine_db.begin() as txn:
-        dim_via.to_sql('dim_via_ingreso', con=txn, if_exists='append', index=False)
-        dim_estado.to_sql('dim_estado_salida', con=txn, if_exists='append', index=False)
-        dim_causa.to_sql('dim_causa_ext', con=txn, if_exists='append', index=False)
-        dim_depto.to_sql('dim_departamento', con=txn, if_exists='append', index=False)
-        dim_muni.to_sql('dim_municipio', con=txn, if_exists='append', index=False)
-        dim_edad.to_sql('dim_edad', con=txn, if_exists='append', index=False)
-
-        # Selección de columnas para la tabla de hechos
-        fact_cols = [
-            'Cod_IPS','ID','Fecha_Ingreso','Fecha_Egreso','Duracion_Dias',
-            'via_ingreso_id','estado_salida_id','edad_id','municipio_id','causa_ext_id','departamento_id',
-            'VIA INGRESO','Estado_Salida','EDAD','UNIDAD EDAD','MUNICIPIO','CAUSA EXT','DEPARTAMENTO',
-            'MUNICIPIO_DANE','DIAGNOSTICO INGRESO','Cod_Dx_Ppal_Egreso',
-            'DIAG EGRESO REL 1','DIAG EGRESO REL 2','DIAG EGRESO REL 3','DIAG COMPLICACION','DIAG MUERTE','AÑO'
-        ]
-        fact[fact_cols].to_sql('fact_atenciones', con=txn, if_exists='append', index=False)
+    preparacion_dataset(df, engine_db)
+   
 
     print("✅ Base de datos creada, tablas generadas y datos cargados correctamente.")
 return True

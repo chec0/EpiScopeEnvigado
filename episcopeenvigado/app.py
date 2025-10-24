@@ -1,3 +1,8 @@
+# ==================================================
+# Script inicial de la aplicación EpiScope Envigado
+# ==================================================
+
+
 # Importar bibliotecas necesarias
 from pathlib import Path
 
@@ -20,9 +25,25 @@ def main(
     output_path: Path = PROCESSED_DATA_DIR / "RIPS_20232024_HOSP.xlsx",
     # ----------------------------------------------
 ):
-    # ---  AQUI COMIENZA EL PROGRAMA ---
+    """
+    Proceso principal del pipeline ETL:
+    1. Carga de datos
+    2. Limpieza
+    3. (opcional) Carga a base de datos
+    """
+    logger.info("🚀 Comienza la ejecución del proceso ETL...")
+    print("🚀 Comienza la ejecución del proceso ETL...")
+
+    # 1️⃣ Extracción
     df = et.cargar_datos(input_path)
+    logger.success("Dataset cargado correctamente")
+
+    # 2️⃣ Transformación
+    logger.info("🧹 Comienza la limpieza de datos...")
+    print("🧹 Comienza la limpieza de datos...")
     df_limpio = td.limpieza_datos(df)
+    logger.success("✅ Limpieza finalizada.")
+    print("✅ Limpieza finalizada.")
 
     ld.crear_base_datos(df_limpio)
 

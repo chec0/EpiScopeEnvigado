@@ -1,6 +1,9 @@
 # Data
 /data/raw/RIPS_20232024_HOSP.xlsx
 
+# Config Database
+/episcopeenvigado/etl_modules/_config.py
+
 # Mac OS-specific storage files
 .DS_Store
 

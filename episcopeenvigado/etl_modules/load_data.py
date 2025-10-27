@@ -393,13 +393,19 @@ def preparacion_dataset(df, engine_db):
 
     return True
 
-
 def crear_base_datos(df):
-    print("Va a crear la conexión al motor de Base de datos...")
-    engine_db = crear_conexion()
 
-    probar_conexion(engine_db)
-    print("Funciona la conexión...")
+    # Conexión SIN base (para crearla)
+    engine_root = create_engine(
+        f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD_URL}@{MYSQL_HOST}:{MYSQL_PORT}",
+        pool_pre_ping=True,
+    )
+
+    # Conexión CON base (una vez creada)
+    engine_db = create_engine(
+        f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD_URL}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DB}?charset=utf8mb4",
+        pool_pre_ping=True,
+    )
 
     ddl_statements = [
         f"CREATE DATABASE IF NOT EXISTS `{MYSQL_DB}` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",

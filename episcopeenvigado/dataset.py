@@ -1,12 +1,74 @@
 from pathlib import Path
-
-from loguru import logger
+from sqlalchemy import create_engine
 from tqdm import tqdm
 import typer
 
-from episcopeenvigado.config import PROCESSED_DATA_DIR, RAW_DATA_DIR
-
 app = typer.Typer()
+
+from etl_modules._config import (
+    MYSQL_USER,
+    MYSQL_HOST,
+    MYSQL_PORT,
+    MYSQL_DB,
+    MYSQL_PASSWORD_URL,
+)
+
+from episcopeenvigado.config import PROCESSED_DATA_DIR, RAW_DATA_DIR
+from loguru import logger
+
+
+# ======================================================
+# Función: crear_conexion
+# ======================================================
+def crear_conexion(bd: bool = False):
+    """
+    Crea y devuelve un motor de conexión a la base de datos MySQL usando SQLAlchemy.
+
+    Parámetros
+    ----------
+    bd : bool, opcional
+        Indica si la conexión debe incluir el nombre de la base de datos.
+        - True: conecta directamente a la base de datos indicada en MYSQL_DB.
+        - False: conecta solo al servidor (sin seleccionar base de datos).
+        Por defecto es False.
+
+    Variables requeridas (definidas en _config.py)
+    ----------------------------------------------
+    MYSQL_USER : str
+        Usuario de la base de datos.
+    MYSQL_PASSWORD_URL : str
+        Contraseña o token de acceso del usuario.
+    MYSQL_HOST : str
+        Dirección o IP del servidor MySQL (por ejemplo, "localhost").
+    MYSQL_PORT : str
+        Puerto de conexión (por ejemplo, "3306").
+    MYSQL_DB : str
+        Nombre de la base de datos.
+
+    Retorna
+    -------
+    sqlalchemy.Engine
+        Motor de conexión a la base de datos.
+
+    Ejemplo
+    -------
+    >>> engine = crear_conexion(bd=True)
+    >>> print(engine)
+    Engine(mysql+pymysql://user:***@localhost:3306/mydb)
+    """
+    # Si se solicita conexión a la BD específica
+    if bd:
+        engine_db = create_engine(
+            f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD_URL}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DB}?charset=utf8mb4",
+            pool_pre_ping=True,
+        )
+    else:
+        engine_db = create_engine(
+            f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD_URL}@{MYSQL_HOST}:{MYSQL_PORT}",
+            pool_pre_ping=True,
+        )
+
+    return engine_db
 
 
 @app.command()

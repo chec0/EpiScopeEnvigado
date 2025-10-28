@@ -192,3 +192,5 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+data/raw/TablaReferencia_Departamento.xlsx
+data/raw/TablaReferencia_Municipio.xlsx

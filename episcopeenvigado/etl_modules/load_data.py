@@ -204,7 +204,7 @@ def cargar_departamentos(nombre_archivo: str, hoja: str = None):
 
     Flujo de ejecución
     ------------------
-    1. Construye la ruta absoluta del archivo Excel en base a `RAW_DATA_DIR`.
+    1. Construye la ruta absoluta del archivo Excel con base a `RAW_DATA_DIR`.
     2. Lee el contenido del archivo en un DataFrame de pandas.
     3. Filtra y conserva únicamente las columnas `Codigo` y `Nombre`.
     4. Renombra las columnas para coincidir con los nombres de la tabla SQL:
@@ -249,6 +249,11 @@ def cargar_departamentos(nombre_archivo: str, hoja: str = None):
         dim_depto.dropna(subset=["Codigo", "Nombre"])
         .drop_duplicates(subset=["Codigo"])
         .rename(columns={"Codigo": "departamento_cod", "Nombre": "departamento_desc"})
+        .assign(
+            dim_depto=lambda df: df["departamento_cod"].apply(
+                lambda x: str(int(x)).zfill(2) if pd.notnull(x) else None
+            )
+        )
         .sort_values(by="departamento_cod")
         .reset_index(drop=True)
     )
@@ -304,7 +309,7 @@ def cargar_municipios(nombre_archivo: str, hoja: str = None):
 
     Flujo de ejecución
     ------------------
-    1. Construye la ruta absoluta del archivo Excel en base a `RAW_DATA_DIR`.
+    1. Construye la ruta absoluta del archivo Excel con base a `RAW_DATA_DIR`.
     2. Lee el contenido del archivo en un DataFrame de pandas.
     3. Filtra y conserva únicamente las columnas `Codigo`, `Nombre` y `Extra_I:Departamento`.
     4. Renombra las columnas para coincidir con los nombres de la tabla SQL:
@@ -355,6 +360,14 @@ def cargar_municipios(nombre_archivo: str, hoja: str = None):
                 "Nombre": "municipio_desc",
                 "Extra_I:Departamento": "departamento_cod",
             }
+        )
+        .assign(
+            municipio_dane=lambda df: df["municipio_dane"].apply(
+                lambda x: str(int(x)).zfill(5) if pd.notnull(x) else None
+            ),
+            departamento_cod=lambda df: df["departamento_cod"].apply(
+                lambda x: str(int(x)).zfill(5) if pd.notnull(x) else None
+            ),
         )
         .sort_values(by="departamento_cod")
         .reset_index(drop=True)
@@ -440,6 +453,8 @@ def preparacion_dataset(df) -> bool:
     if dim_muni.empty:
         cargar_municipios("TablaReferencia_Municipio.xlsx")
         dim_muni = obtener_dimensiones_existentes("dim_municipio")
+
+    df["COD_DANE"] = df["DEPARTAMENTO"].astype(str) + df["MUNICIPIO"].astype(str)
 
     # =========================
     # CATÁLOGOS (OPCIONALES) PARA ENRIQUECER DIMENSIONES
@@ -577,7 +592,7 @@ def preparacion_dataset(df) -> bool:
     fact["causa_ext_id"] = fact["CAUSA EXT"].map(map_causa)
 
     fact["departamento_id"] = fact["DEPARTAMENTO"].map(map_depto)
-    fact["municipio_id"] = fact["MUNICIPIO"].map(map_muni)
+    fact["municipio_id"] = fact["COD_DANE"].map(map_muni)
     """
     fact["edad_id"] = list(
         zip(fact["EDAD"].astype("Int64"), fact["UNIDAD EDAD"].astype("Int64"))
@@ -735,9 +750,8 @@ def crear_base_datos():
             `DIAG EGRESO REL 3`  VARCHAR(10),
             `DIAG COMPLICACION`  VARCHAR(10),
             `DIAG MUERTE`        VARCHAR(10),
-            `AÑO`                SMALLINT,
-
-            UNIQUE KEY uq_fact (Cod_IPS, ID)
+            `AÑO`                SMALLINT
+            
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
             """,
             # FKs (separadas para evitar problemas de orden y permitir cargas iniciales)

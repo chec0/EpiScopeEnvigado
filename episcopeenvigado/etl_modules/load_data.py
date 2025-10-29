@@ -236,7 +236,13 @@ def cargar_departamentos(nombre_archivo: str, hoja: str = None):
         logger.error(f"No se encontró el archivo en {ruta_archivo}")
 
     logger.info(f"📂 Leyendo archivo Excel: {ruta_archivo}")
-    df = pd.read_excel(ruta_archivo)
+    df = pd.read_excel(
+        ruta_archivo,
+        dtype={
+            "Codigo": "str",
+            "Nombre": "str",
+        },
+    )
     logger.success(
         f"✅ Archivo leído correctamente: {df.shape[0]} filas, {df.shape[1]} columnas"
     )
@@ -249,11 +255,6 @@ def cargar_departamentos(nombre_archivo: str, hoja: str = None):
         dim_depto.dropna(subset=["Codigo", "Nombre"])
         .drop_duplicates(subset=["Codigo"])
         .rename(columns={"Codigo": "departamento_cod", "Nombre": "departamento_desc"})
-        .assign(
-            dim_depto=lambda df: df["departamento_cod"].apply(
-                lambda x: str(int(x)).zfill(2) if pd.notnull(x) else None
-            )
-        )
         .sort_values(by="departamento_cod")
         .reset_index(drop=True)
     )
@@ -342,7 +343,14 @@ def cargar_municipios(nombre_archivo: str, hoja: str = None):
         logger.error(f"No se encontró el archivo en {ruta_archivo}")
 
     logger.info(f"📂 Leyendo archivo Excel: {ruta_archivo}")
-    df = pd.read_excel(ruta_archivo)
+    df = pd.read_excel(
+        ruta_archivo,
+        dtype={
+            "Codigo": "str",
+            "Nombre": "str",
+            "Extra_I:Departamento": "str",
+        },
+    )
     logger.success(
         f"✅ Archivo leído correctamente: {df.shape[0]} filas, {df.shape[1]} columnas"
     )
@@ -360,14 +368,6 @@ def cargar_municipios(nombre_archivo: str, hoja: str = None):
                 "Nombre": "municipio_desc",
                 "Extra_I:Departamento": "departamento_cod",
             }
-        )
-        .assign(
-            municipio_dane=lambda df: df["municipio_dane"].apply(
-                lambda x: str(int(x)).zfill(5) if pd.notnull(x) else None
-            ),
-            departamento_cod=lambda df: df["departamento_cod"].apply(
-                lambda x: str(int(x)).zfill(5) if pd.notnull(x) else None
-            ),
         )
         .sort_values(by="departamento_cod")
         .reset_index(drop=True)

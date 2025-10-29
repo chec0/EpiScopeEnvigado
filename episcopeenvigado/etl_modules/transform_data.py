@@ -12,14 +12,19 @@ def limpieza_datos(df):
     # True si cumple ^PAC\d{5}$, False si no (y False también para NaN)
     df["ID_valido"] = df["ID"].str.fullmatch(r"^PAC\d{5}$").fillna(False)
 
-    # --- Numérico para las llaves o códigos ---
+    df["MUNICIPIO"] = df["MUNICIPIO"].apply(
+        lambda x: str(int(x)).zfill(3) if pd.notnull(x) else None
+    )
+    df["DEPARTAMENTO"] = df["DEPARTAMENTO"].apply(
+        lambda x: str(int(x)).zfill(2) if pd.notnull(x) else None
+    )
 
+    # --- Numérico para las llaves o códigos ---
     for c in [
         "VIA INGRESO",
         "CAUSA EXT",
         "EDAD",
         "UNIDAD EDAD",
-        "MUNICIPIO",
         "GRUPO EDAD",
         "AÑO",
     ]:

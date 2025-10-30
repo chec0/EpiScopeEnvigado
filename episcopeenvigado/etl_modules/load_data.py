@@ -16,6 +16,8 @@ from etl_modules._config import (
 )
 
 from episcopeenvigado.config import PROCESSED_DATA_DIR, RAW_DATA_DIR
+from episcopeenvigado.etl_modules import extractor_data as ed
+from episcopeenvigado.etl_modules import transform_data as td
 from loguru import logger
 
 
@@ -174,7 +176,7 @@ def obtener_dimensiones_existentes(tabla: str) -> pd.DataFrame:
 # ======================================================
 # Función: cargar_departamentos
 # ======================================================
-def cargar_departamentos(nombre_archivo: str, hoja: str = None):
+def cargar_departamentos(ruta_archivo: str, hoja: str = None) -> pd.DataFrame:
     """
     Carga la información de departamentos desde un archivo Excel y la inserta
     en la tabla `dim_departamento` de la base de datos MySQL.
@@ -231,55 +233,32 @@ def cargar_departamentos(nombre_archivo: str, hoja: str = None):
     ✅ Datos cargados en dim_departamento (33 registros)
     """
 
-    ruta_archivo = Path.joinpath(RAW_DATA_DIR, nombre_archivo)
-    if not ruta_archivo or not ruta_archivo.exists():
-        logger.error(f"No se encontró el archivo en {ruta_archivo}")
+    dim_depto = obtener_dimensiones_existentes("dim_departamento")
+    if dim_depto.empty:
+        df_depto = ed.extraer_departamentos(ruta_archivo)
+        df_depto_limpio = td.limpieza_departamentos(df_depto)
 
-    logger.info(f"📂 Leyendo archivo Excel: {ruta_archivo}")
-    df = pd.read_excel(
-        ruta_archivo,
-        dtype={
-            "Codigo": "str",
-            "Nombre": "str",
-        },
-    )
-    logger.success(
-        f"✅ Archivo leído correctamente: {df.shape[0]} filas, {df.shape[1]} columnas"
-    )
-
-    # Filtrar solo columnas necesarias
-    dim_depto = df[["Codigo", "Nombre"]].copy()
-
-    # Limpiar y preparar
-    dim_depto = (
-        dim_depto.dropna(subset=["Codigo", "Nombre"])
-        .drop_duplicates(subset=["Codigo"])
-        .rename(columns={"Codigo": "departamento_cod", "Nombre": "departamento_desc"})
-        .sort_values(by="departamento_cod")
-        .reset_index(drop=True)
-    )
-
-    # Insertar en la base de datos
-    engine_db = crear_conexion(bd=True)
-
-    try:
-        with engine_db.begin() as conn:
-            dim_depto.to_sql(
-                "dim_departamento", con=conn, if_exists="append", index=False
+        # Insertar en la base de datos
+        engine_db = crear_conexion(bd=True)
+        try:
+            with engine_db.begin() as conn:
+                df_depto_limpio.to_sql(
+                    "dim_departamento", con=conn, if_exists="append", index=False
+                )
+            logger.success(
+                f"Datos cargados en dim_departamento ({len(df_depto_limpio)} registros)"
             )
-        logger.success(
-            f"Datos cargados en dim_departamento ({len(dim_depto)} registros)"
-        )
-    except Exception as e:
-        logger.error(f"Error al insertar en dim_departamento: {e}")
+            return df_depto_limpio
+        except Exception as e:
+            logger.error(f"Error al insertar en dim_departamento: {e}")
 
-    return
+    return dim_depto
 
 
 # ======================================================
 # Función: cargar_municipios
 # ======================================================
-def cargar_municipios(nombre_archivo: str, hoja: str = None):
+def cargar_municipios(ruta_archivo, hoja: str = None) -> pd.DataFrame:
     """
     Carga la información de municipios desde un archivo Excel y la inserta
     en la tabla `dim_municipio` de la base de datos MySQL.
@@ -338,52 +317,26 @@ def cargar_municipios(nombre_archivo: str, hoja: str = None):
     ✅ Datos cargados en dim_municipio (1125 registros)
     """
 
-    ruta_archivo = Path.joinpath(RAW_DATA_DIR, nombre_archivo)
-    if not ruta_archivo or not ruta_archivo.exists():
-        logger.error(f"No se encontró el archivo en {ruta_archivo}")
+    dim_muni = obtener_dimensiones_existentes("dim_municipio")
+    if dim_muni.empty:
+        df_muni = ed.extraer_municipios(ruta_archivo)
+        df_muni_limpio = td.limpieza_municipios(df_muni)
 
-    logger.info(f"📂 Leyendo archivo Excel: {ruta_archivo}")
-    df = pd.read_excel(
-        ruta_archivo,
-        dtype={
-            "Codigo": "str",
-            "Nombre": "str",
-            "Extra_I:Departamento": "str",
-        },
-    )
-    logger.success(
-        f"✅ Archivo leído correctamente: {df.shape[0]} filas, {df.shape[1]} columnas"
-    )
+        # Insertar en la base de datos
+        engine_db = crear_conexion(bd=True)
+        try:
+            with engine_db.begin() as conn:
+                df_muni_limpio.to_sql(
+                    "dim_municipio", con=conn, if_exists="append", index=False
+                )
+            logger.success(
+                f"Datos cargados en dim_municipio ({len(df_muni_limpio)} registros)"
+            )
+            return df_muni_limpio
+        except Exception as e:
+            logger.error(f"Error al insertar en dim_municipio: {e}")
 
-    # Filtrar solo columnas necesarias
-    dim_muni = df[["Codigo", "Nombre", "Extra_I:Departamento"]].copy()
-
-    # Limpiar y preparar
-    dim_muni = (
-        dim_muni.dropna(subset=["Codigo", "Nombre", "Extra_I:Departamento"])
-        .drop_duplicates(subset=["Codigo"])
-        .rename(
-            columns={
-                "Codigo": "municipio_dane",
-                "Nombre": "municipio_desc",
-                "Extra_I:Departamento": "departamento_cod",
-            }
-        )
-        .sort_values(by="departamento_cod")
-        .reset_index(drop=True)
-    )
-
-    # Insertar en la base de datos
-    engine_db = crear_conexion(bd=True)
-
-    try:
-        with engine_db.begin() as conn:
-            dim_muni.to_sql("dim_municipio", con=conn, if_exists="append", index=False)
-        logger.success(f"Datos cargados en dim_municipio ({len(dim_muni)} registros)")
-    except Exception as e:
-        logger.error(f"Error al insertar en dim_municipio: {e}")
-
-    return
+    return dim_muni
 
 
 # ======================================================
@@ -419,7 +372,7 @@ def edad_a_anios(edad, unidad):
     """
     # Validar valores nulos
     if pd.isna(edad) or pd.isna(unidad):
-        return np.nan
+        return 0
 
     # Convertir según unidad
     if unidad == 1:  # Años
@@ -430,7 +383,7 @@ def edad_a_anios(edad, unidad):
         return float(edad) / 365.25
 
     # En caso de unidad desconocida
-    return np.nan
+    return 0
 
 
 # ======================================================
@@ -445,17 +398,13 @@ def preparacion_dataset(df) -> bool:
 
     # Cargar dimensiones base si no existen
     dim_depto = obtener_dimensiones_existentes("dim_departamento")
-    if dim_depto.empty:
-        cargar_departamentos("TablaReferencia_Departamento.xlsx")
-        dim_depto = obtener_dimensiones_existentes("dim_departamento")
-
     dim_muni = obtener_dimensiones_existentes("dim_municipio")
-    if dim_muni.empty:
-        cargar_municipios("TablaReferencia_Municipio.xlsx")
-        dim_muni = obtener_dimensiones_existentes("dim_municipio")
 
-    df["COD_DANE"] = df["DEPARTAMENTO"].astype(str) + df["MUNICIPIO"].astype(str)
+    df["MUNICIPIO_DANE"] = df["DEPARTAMENTO"].astype(str) + df["MUNICIPIO"].astype(str)
 
+    df["EDAD_ANIOS"] = df.apply(
+        lambda r: edad_a_anios(r["EDAD"], r["UNIDAD EDAD"]), axis=1
+    )
     # =========================
     # CATÁLOGOS (OPCIONALES) PARA ENRIQUECER DIMENSIONES
     #    (NO se guardan en la tabla de hechos; sirven para las dims)
@@ -536,23 +485,6 @@ def preparacion_dataset(df) -> bool:
     )
     dim_causa.insert(0, "causa_ext_id", range(1, len(dim_causa) + 1))
 
-    # --- dim_edad ---
-    # Aunque el usuario pidió EDAD como llave, para evitar ambigüedad (p.ej. 12 meses vs 1 año),
-    # creamos la dimensión con (EDAD, UNIDAD). La FK apuntará a este SK.
-    dim_edad = (
-        df[["EDAD", "UNIDAD EDAD", "UNIDAD_EDAD_TXT"]]
-        .drop_duplicates()
-        .sort_values(by=["UNIDAD EDAD", "EDAD"])
-        .rename(columns={"UNIDAD EDAD": "unidad_edad_cod"})
-        .assign(
-            edad_anios=lambda d: d.apply(
-                lambda r: edad_a_anios(r["EDAD"], r["UNIDAD_EDAD_TXT"]), axis=1
-            )
-        )
-        .reset_index(drop=True)
-    )
-    dim_edad.insert(0, "edad_id", range(1, len(dim_edad) + 1))
-
     # =========================
     # 5) MAPS DE CLAVE NATURAL -> SK (para poblar la tabla de hechos)
     # =========================
@@ -570,18 +502,6 @@ def preparacion_dataset(df) -> bool:
     map_muni = dict(zip(dim_muni["municipio_dane"], dim_muni["municipio_id"]))
 
     # =========================
-    # TENGO PROBLEMAS CON LA CONVERSIÓN
-    # =========================
-    # Para edad: clave compuesta (EDAD, UNIDAD EDAD)
-    dim_edad["key"] = list(
-        zip(
-            dim_edad["EDAD"].astype("Int64"),
-            dim_edad["unidad_edad_cod"].astype("Int64"),
-        )
-    )
-    map_edad = dict(zip(dim_edad["key"], dim_edad["edad_id"]))
-
-    # =========================
     # 6) TABLA DE HECHOS (con FKs)
     # =========================
     fact = df.copy()
@@ -592,13 +512,7 @@ def preparacion_dataset(df) -> bool:
     fact["causa_ext_id"] = fact["CAUSA EXT"].map(map_causa)
 
     fact["departamento_id"] = fact["DEPARTAMENTO"].map(map_depto)
-    fact["municipio_id"] = fact["COD_DANE"].map(map_muni)
-    """
-    fact["edad_id"] = list(
-        zip(fact["EDAD"].astype("Int64"), fact["UNIDAD EDAD"].astype("Int64"))
-    )
-    fact["edad_id"] = fact["edad_id"].map(map_edad)
-    """
+    fact["municipio_id"] = fact["MUNICIPIO_DANE"].map(map_muni)
 
     # =========================
     # 8) CARGA DE DIMENSIONES Y HECHOS
@@ -631,6 +545,8 @@ def preparacion_dataset(df) -> bool:
                 "Estado_Salida",
                 "EDAD",
                 "UNIDAD EDAD",
+                "EDAD_ANIOS",
+                "MUNICIPIO_DANE",
                 "MUNICIPIO",
                 "CAUSA EXT",
                 "DEPARTAMENTO",
@@ -651,6 +567,16 @@ def preparacion_dataset(df) -> bool:
         logger.error(f"❌ Error durante la carga de hechos: {e}")
         return False
 
+    return True
+
+
+# ======================================================
+# Función: validar_base_datos()
+# ======================================================
+def validar_base_datos() -> bool:
+    engine_db = crear_conexion(bd=True)
+    if not probar_conexion(engine_db, MYSQL_DB):
+        return False
     return True
 
 
@@ -707,15 +633,6 @@ def crear_base_datos():
             municipio_desc   VARCHAR(80)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
             """,
-            """
-            CREATE TABLE IF NOT EXISTS dim_edad (
-            edad_id          INT AUTO_INCREMENT PRIMARY KEY,
-            EDAD             SMALLINT,
-            unidad_edad_cod  SMALLINT,         -- 1=Años, 2=Meses, 3=Días
-            UNIDAD_EDAD_TXT  CHAR(1),
-            edad_anios       DECIMAL(6,3)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-            """,
             # Hechos
             """
             CREATE TABLE IF NOT EXISTS fact_atenciones (
@@ -729,7 +646,6 @@ def crear_base_datos():
             -- Claves foráneas (SK)
             via_ingreso_id       INT,
             estado_salida_id     INT,
-            edad_id              INT,
             municipio_id         INT,
             causa_ext_id         INT,
             departamento_id      INT,
@@ -739,10 +655,11 @@ def crear_base_datos():
             `Estado_Salida`      VARCHAR(30),
             `EDAD`               SMALLINT,
             `UNIDAD EDAD`        SMALLINT,
+            `EDAD_ANIOS`         DECIMAL(6,3),
             `MUNICIPIO`          SMALLINT,
             `CAUSA EXT`          SMALLINT,
             `DEPARTAMENTO`       CHAR(2),
-            MUNICIPIO_DANE       CHAR(5),
+            `MUNICIPIO_DANE`     CHAR(5),
             `DIAGNOSTICO INGRESO` VARCHAR(255),
             Cod_Dx_Ppal_Egreso   VARCHAR(10),
             `DIAG EGRESO REL 1`  VARCHAR(10),
@@ -761,8 +678,7 @@ def crear_base_datos():
             ADD CONSTRAINT fk_fact_estado  FOREIGN KEY (estado_salida_id) REFERENCES dim_estado_salida(estado_salida_id),
             ADD CONSTRAINT fk_fact_causa   FOREIGN KEY (causa_ext_id)     REFERENCES dim_causa_ext(causa_ext_id),
             ADD CONSTRAINT fk_fact_depto   FOREIGN KEY (departamento_id)  REFERENCES dim_departamento(departamento_id),
-            ADD CONSTRAINT fk_fact_muni    FOREIGN KEY (municipio_id)     REFERENCES dim_municipio(municipio_id),
-            ADD CONSTRAINT fk_fact_edad    FOREIGN KEY (edad_id)          REFERENCES dim_edad(edad_id);
+            ADD CONSTRAINT fk_fact_muni    FOREIGN KEY (municipio_id)     REFERENCES dim_municipio(municipio_id);
             """,
         ]
 

@@ -1,7 +1,6 @@
 from pathlib import Path
 from sqlalchemy import create_engine
 import pandas as pd
-from tqdm import tqdm
 import typer
 
 app = typer.Typer()
@@ -116,11 +115,15 @@ def obtener_dataset_completo() -> dict[str, pd.DataFrame]:
                 try:
                     df = pd.read_sql(f"SELECT * FROM {tabla};", con=conn)
                     dataset[tabla] = df
-                    logger.success(f"✅ Tabla '{tabla}' cargada correctamente ({len(df)} filas).")
+                    logger.success(
+                        f"✅ Tabla '{tabla}' cargada correctamente ({len(df)} filas)."
+                    )
                 except Exception as e:
                     logger.error(f"⚠️ Error al cargar la tabla '{tabla}': {e}")
 
-            logger.info(f"✅ Dataset completo cargado ({len(dataset)} tablas exitosas).")
+            logger.info(
+                f"✅ Dataset completo cargado ({len(dataset)} tablas exitosas)."
+            )
             return dataset
 
     except Exception as e:
@@ -129,25 +132,12 @@ def obtener_dataset_completo() -> dict[str, pd.DataFrame]:
 
 
 @app.command()
-def main(
-    # ---- REMPLAZAR EL NOMBRE DEL ARCHIVO CORRECTO ----
-    input_path: Path = RAW_DATA_DIR / "RIPS_20232024_HOSP.xlsx",
-    output_path: Path = PROCESSED_DATA_DIR / "RIPS_20232024_HOSP.xlsx",
-    # ----------------------------------------------
-): 
+def main():
     df = obtener_dataset_completo()
-    # ---- REPLACE THIS WITH YOUR OWN CODE ----
-    logger.info("Processing dataset...")
-    for i in tqdm(range(10), total=10):
-        if i == 5:
-            logger.info("Something happened for iteration 5.")
-    logger.success("Processing dataset complete.")
-    # -----------------------------------------
 
 
 if __name__ == "__main__":
     app()
-
 
 
 # ======================================================

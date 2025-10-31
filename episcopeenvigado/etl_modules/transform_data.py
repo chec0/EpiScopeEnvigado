@@ -1,6 +1,7 @@
 # Importar bibliotecas necesarias
 import pandas as pd
 import re
+from loguru import logger
 
 
 # **02. Limpieza de Datos**
@@ -68,3 +69,98 @@ def limpieza_datos(df):
     df.loc[df["Duracion_Dias"] < 0, "Duracion_Dias"] = pd.NA
 
     return df
+
+
+def limpieza_departamentos(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Limpia y transforma los datos del catálogo de departamentos.
+
+    Operaciones aplicadas:
+    ----------------------
+    1. Selecciona las columnas `Codigo` y `Nombre` del DataFrame original.
+    2. Elimina los registros con valores nulos en dichas columnas.
+    3. Elimina los duplicados basados en el campo `Codigo`.
+    4. Renombra las columnas para que coincidan con los nombres de la tabla SQL:
+           - `Codigo` → `departamento_cod`
+           - `Nombre` → `departamento_desc`
+    5. Ordena los registros por el código del departamento y reinicia el índice.
+
+    Parámetros
+    ----------
+    df : pandas.DataFrame
+        DataFrame original con los datos crudos de departamentos.
+
+    Retorna
+    -------
+    pandas.DataFrame
+        DataFrame limpio, transformado y con los nombres de columnas estandarizados.
+    """
+
+    logger.info("🧹 Iniciando transformación de datos de departamentos")
+
+    # Limpiar y preparar
+    dim_depto = (
+        df[["Codigo", "Nombre"]]
+        .dropna(subset=["Codigo", "Nombre"])
+        .drop_duplicates(subset=["Codigo"])
+        .rename(
+            columns={
+                "Codigo": "departamento_cod",
+                "Nombre": "departamento_desc",
+            }
+        )
+        .sort_values(by="departamento_cod")
+        .reset_index(drop=True)
+    )
+
+    logger.success(f"✅ Transformación completada: {len(dim_depto)} registros válidos")
+
+    return dim_depto
+
+
+def limpieza_municipios(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Limpia y transforma los datos de municipios.
+
+    Operaciones aplicadas:
+    ----------------------
+    1. Selecciona las columnas `Codigo`, `Nombre` y `Extra_I:Departamento`.
+    2. Elimina registros con valores nulos en dichas columnas.
+    3. Elimina duplicados basados en el código del municipio.
+    4. Renombra las columnas para coincidir con los nombres de la tabla SQL:
+           - `Codigo` → `municipio_dane`
+           - `Nombre` → `municipio_desc`
+           - `Extra_I:Departamento` → `departamento_cod`
+    5. Ordena los registros por el código del departamento.
+
+    Parámetros
+    ----------
+    df : pandas.DataFrame
+        DataFrame original con los datos crudos de municipios.
+
+    Retorna
+    -------
+    pandas.DataFrame
+        DataFrame limpio y transformado con las columnas estandarizadas.
+    """
+    logger.info("🧹 Iniciando transformación de datos de departamentos")
+
+    # Limpiar y preparar
+    dim_muni = (
+        df[["Codigo", "Nombre", "Extra_I:Departamento"]]
+        .dropna(subset=["Codigo", "Nombre", "Extra_I:Departamento"])
+        .drop_duplicates(subset=["Codigo"])
+        .rename(
+            columns={
+                "Codigo": "municipio_dane",
+                "Nombre": "municipio_desc",
+                "Extra_I:Departamento": "departamento_cod",
+            }
+        )
+        .sort_values(by="departamento_cod")
+        .reset_index(drop=True)
+    )
+
+    logger.success(f"✅ Transformación completada: {len(dim_muni)} registros válidos")
+
+    return dim_muni

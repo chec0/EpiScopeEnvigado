@@ -1,5 +1,6 @@
 from pathlib import Path
 from sqlalchemy import create_engine
+import pandas as pd
 from tqdm import tqdm
 import typer
 
@@ -71,13 +72,70 @@ def crear_conexion(bd: bool = False):
     return engine_db
 
 
+######### ----- Codigo para traer toda la info del dataset
+# ======================================================
+# Función: obtener_dataset_completo
+# ======================================================
+def obtener_dataset_completo() -> dict[str, pd.DataFrame]:
+    """
+    Recupera todas las tablas disponibles en la base de datos MySQL definida en la configuración
+    y las devuelve como un diccionario de DataFrames de pandas.
+
+    Parámetros
+    ----------
+    Ninguno.
+
+    Retorna
+    -------
+    dict[str, pandas.DataFrame]
+        Un diccionario donde:
+          - La clave es el nombre de la tabla.
+          - El valor es un DataFrame con el contenido completo de esa tabla.
+
+    Ejemplo
+    -------
+    >>> dataset = obtener_dataset_completo()
+    >>> dataset.keys()
+    dict_keys(['dim_departamento', 'dim_municipio', 'hecho_ventas', ...])
+    >>> dataset['hecho_ventas'].head()
+    """
+
+    # Crear conexión a la base de datos
+    engine_db = crear_conexion(bd=True)
+
+    try:
+        with engine_db.begin() as conn:
+            # 1️⃣ Obtener la lista de tablas
+            tablas = pd.read_sql("SHOW TABLES;", con=conn).iloc[:, 0].tolist()
+            logger.info(f"📋 Se encontraron {len(tablas)} tablas en la base de datos.")
+
+            dataset = {}
+
+            # 2️⃣ Cargar cada tabla en un DataFrame
+            for tabla in tablas:
+                try:
+                    df = pd.read_sql(f"SELECT * FROM {tabla};", con=conn)
+                    dataset[tabla] = df
+                    logger.success(f"✅ Tabla '{tabla}' cargada correctamente ({len(df)} filas).")
+                except Exception as e:
+                    logger.error(f"⚠️ Error al cargar la tabla '{tabla}': {e}")
+
+            logger.info(f"✅ Dataset completo cargado ({len(dataset)} tablas exitosas).")
+            return dataset
+
+    except Exception as e:
+        logger.error(f"❌ Error al obtener el dataset completo: {e}")
+        return {}
+
+
 @app.command()
 def main(
     # ---- REMPLAZAR EL NOMBRE DEL ARCHIVO CORRECTO ----
     input_path: Path = RAW_DATA_DIR / "RIPS_20232024_HOSP.xlsx",
     output_path: Path = PROCESSED_DATA_DIR / "RIPS_20232024_HOSP.xlsx",
     # ----------------------------------------------
-):
+): 
+    df = obtener_dataset_completo()
     # ---- REPLACE THIS WITH YOUR OWN CODE ----
     logger.info("Processing dataset...")
     for i in tqdm(range(10), total=10):
@@ -90,27 +148,6 @@ def main(
 if __name__ == "__main__":
     app()
 
-
-# ======================================================
-# Catálogo de causas externas (CAUSA EXT)
-# ======================================================
-CAT_CAUSA_EXT = {
-    "01": "ACCIDENTE DE TRABAJO",
-    "02": "ACCIDENTE DE TRÁNSITO",
-    "03": "ACCIDENTE RÁBICO",
-    "04": "ACCIDENTE OFÍDICO",
-    "05": "OTRO TIPO DE ACCIDENTE",
-    "06": "EVENTO CATASTRÓFICO",
-    "07": "LESIÓN POR AGRESIÓN",
-    "08": "LESIÓN AUTO INFLIGIDA",
-    "09": "SOSPECHA DE MALTRATO FÍSICO",
-    "10": "SOSPECHA DE ABUSO SEXUAL",
-    "11": "SOSPECHA DE VIOLENCIA SEXUAL",
-    "12": "SOSPECHA DE MALTRATO EMOCIONAL",
-    "13": "ENFERMEDAD GENERAL",
-    "14": "ENFERMEDAD PROFESIONAL",
-    "15": "OTRA",
-}
 
 
 # ======================================================

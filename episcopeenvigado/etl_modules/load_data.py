@@ -338,6 +338,53 @@ def cargar_municipios(ruta_archivo, hoja: str = None) -> pd.DataFrame:
 
     return dim_muni
 
+def cargar_cie10(ruta_archivo: str, hoja: str = "Final") -> pd.DataFrame:
+    """
+    Carga el catálogo de CIE-10 a la tabla `dim_cie10` en MySQL.
+    """
+    engine_db = crear_conexion(bd=True)
+
+    # Verificar si la tabla ya tiene datos
+    try:
+        with engine_db.begin() as conn:
+            existing = pd.read_sql("SELECT COUNT(*) AS n FROM dim_cie10;", con=conn)
+            if existing["n"].iloc[0] > 0:
+                logger.info("ℹ️ La tabla dim_cie10 ya contiene datos, no se recargará.")
+                return pd.DataFrame()
+    except Exception:
+        logger.info("⚠️ La tabla dim_cie10 no existe aún o no tiene datos. Se creará y poblará.")
+
+    # Extraer y transformar
+    df_raw = ed.extraer_cie10(ruta_archivo, hoja)
+    df_limpio = td.limpieza_cie10(df_raw)
+
+    # Crear tabla si no existe
+    ddl = """
+    CREATE TABLE IF NOT EXISTS dim_cie10 (
+    cie_4cat             VARCHAR(10) PRIMARY KEY,
+    capitulo             SMALLINT,
+    nombre_cap           VARCHAR(255),
+    cie_3cat             VARCHAR(10),
+    desc_3cat            TEXT,
+    desc_4cat            TEXT,
+    extra_i_aplicaASexo  VARCHAR(10),
+    extra_ii_edadMinima  SMALLINT,
+    extra_iii_edadMaxima SMALLINT,
+    extra_viii_subGrupo  VARCHAR(50),
+    extra_x_sexo         VARCHAR(10)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    """
+
+    try:
+        with engine_db.begin() as conn:
+            conn.execute(text(ddl))
+            df_limpio.to_sql("dim_cie10", con=conn, if_exists="append", index=False)
+        logger.success(f"✅ Catálogo CIE-10 cargado correctamente ({len(df_limpio)} registros)")
+        return df_limpio
+    except Exception as e:
+        logger.error(f"❌ Error al cargar catálogo CIE-10: {e}")
+        return pd.DataFrame()
+
 
 # ======================================================
 # Función: edad_a_anios
@@ -631,6 +678,21 @@ def crear_base_datos():
             municipio_dane   CHAR(5) NOT NULL,
             departamento_cod CHAR(2) NOT NULL,
             municipio_desc   VARCHAR(80)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS dim_cie10 (
+            cie_4cat             VARCHAR(10) PRIMARY KEY,
+            capitulo             SMALLINT,
+            nombre_cap           VARCHAR(255),
+            cie_3cat             VARCHAR(10),
+            desc_3cat            TEXT,
+            desc_4cat            TEXT,
+            extra_i_aplicaASexo  VARCHAR(10),
+            extra_ii_edadMinima  SMALLINT,
+            extra_iii_edadMaxima SMALLINT,
+            extra_viii_subGrupo  VARCHAR(50),
+            extra_x_sexo         VARCHAR(10)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
             """,
             # Hechos

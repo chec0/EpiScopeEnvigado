@@ -164,3 +164,56 @@ def limpieza_municipios(df: pd.DataFrame) -> pd.DataFrame:
     logger.success(f"✅ Transformación completada: {len(dim_muni)} registros válidos")
 
     return dim_muni
+
+def limpieza_cie10(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Limpia y transforma los datos de la tabla de referencia CIE-10
+    para que coincidan con la estructura real de la tabla `dim_cie10`.
+    """
+
+    logger.info("🧹 Iniciando transformación de datos de la tabla CIE-10")
+
+    dim_cie10 = (
+        df[
+            [
+                "CAPITULO",
+                "NOMBRE_CAP",
+                "CIE_3CAT",
+                "DESC_3CAT",
+                "CIE_4CAT",
+                "DESC_4CAT",
+                "Extra_I:AplicaASexo",
+                "Extra_II:EdadMinima",
+                "Extra_III:EdadMaxima",
+                "Extra_VIII:SubGrupo",
+                "Extra_X:Sexo",
+            ]
+        ]
+        .dropna(subset=["CIE_4CAT"])
+        .drop_duplicates(subset=["CIE_4CAT"])
+        .rename(
+            columns={
+                "CAPITULO": "capitulo",
+                "NOMBRE_CAP": "nombre_cap",
+                "CIE_3CAT": "cie_3cat",
+                "DESC_3CAT": "desc_3cat",
+                "CIE_4CAT": "cie_4cat",
+                "DESC_4CAT": "desc_4cat",
+                "Extra_I:AplicaASexo": "extra_i_aplicaASexo",
+                "Extra_II:EdadMinima": "extra_ii_edadMinima",
+                "Extra_III:EdadMaxima": "extra_iii_edadMaxima",
+                "Extra_VIII:SubGrupo": "extra_viii_subGrupo",
+                "Extra_X:Sexo": "extra_x_sexo",
+            }
+        )
+        .assign(
+            extra_ii_edadMinima=lambda d: pd.to_numeric(d["extra_ii_edadMinima"], errors="coerce").astype("Int64"),
+            extra_iii_edadMaxima=lambda d: pd.to_numeric(d["extra_iii_edadMaxima"], errors="coerce").astype("Int64"),
+        )
+        .sort_values(by="cie_4cat")
+        .reset_index(drop=True)
+    )
+
+    logger.success(f"✅ Transformación completada: {len(dim_cie10)} registros válidos")
+
+    return dim_cie10

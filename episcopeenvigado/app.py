@@ -26,6 +26,7 @@ def main(
     archivo_RIPS: Path = RAW_DATA_DIR / "RIPS_20232024_HOSP.xlsx",
     archivo_DEPTO: Path = RAW_DATA_DIR / "TablaReferencia_Departamento.xlsx",
     archivo_MUNI: Path = RAW_DATA_DIR / "TablaReferencia_Municipio.xlsx",
+    archivo_CIE10: Path = RAW_DATA_DIR / "TablaReferencia_CIE10.xlsx",
     # ----------------------------------------------
 ):
     """
@@ -58,6 +59,7 @@ def main(
         # 3 Guardar datos
         df_depto = ld.cargar_departamentos(archivo_DEPTO)
         df_muni = ld.cargar_municipios(archivo_MUNI)
+        df_cie10 = ld.cargar_cie10(archivo_CIE10)
 
         if ld.preparacion_dataset(df_limpio):
             logger.success("Datos cargados correctamente.")

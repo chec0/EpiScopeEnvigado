@@ -5,7 +5,12 @@ from loguru import logger
 
 
 # **02. Limpieza de Datos**
-def limpieza_datos(df):
+
+
+# ======================================================
+# Función: limpieza_datos
+# ======================================================
+def limpieza_datos(df: pd.DataFrame):
     # --- Validación de ID ---
     # Normaliza por si vienen espacios o minúsculas
     df["ID"] = df["ID"].astype("string").str.strip().str.upper()
@@ -71,6 +76,9 @@ def limpieza_datos(df):
     return df
 
 
+# ======================================================
+# Función: limpieza_departamentos
+# ======================================================
 def limpieza_departamentos(df: pd.DataFrame) -> pd.DataFrame:
     """
     Limpia y transforma los datos del catálogo de departamentos.
@@ -118,6 +126,9 @@ def limpieza_departamentos(df: pd.DataFrame) -> pd.DataFrame:
     return dim_depto
 
 
+# ======================================================
+# Función: limpieza_municipios
+# ======================================================
 def limpieza_municipios(df: pd.DataFrame) -> pd.DataFrame:
     """
     Limpia y transforma los datos de municipios.
@@ -165,6 +176,10 @@ def limpieza_municipios(df: pd.DataFrame) -> pd.DataFrame:
 
     return dim_muni
 
+
+# ======================================================
+# Función: limpieza_cie10
+# ======================================================
 def limpieza_cie10(df: pd.DataFrame) -> pd.DataFrame:
     """
     Limpia y transforma los datos de la tabla de referencia CIE-10
@@ -207,8 +222,12 @@ def limpieza_cie10(df: pd.DataFrame) -> pd.DataFrame:
             }
         )
         .assign(
-            extra_ii_edadMinima=lambda d: pd.to_numeric(d["extra_ii_edadMinima"], errors="coerce").astype("Int64"),
-            extra_iii_edadMaxima=lambda d: pd.to_numeric(d["extra_iii_edadMaxima"], errors="coerce").astype("Int64"),
+            extra_ii_edadMinima=lambda d: pd.to_numeric(
+                d["extra_ii_edadMinima"], errors="coerce"
+            ).astype("Int64"),
+            extra_iii_edadMaxima=lambda d: pd.to_numeric(
+                d["extra_iii_edadMaxima"], errors="coerce"
+            ).astype("Int64"),
         )
         .sort_values(by="cie_4cat")
         .reset_index(drop=True)

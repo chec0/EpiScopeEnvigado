@@ -40,6 +40,7 @@ def main(
     # Validación
     if ld.validar_base_datos():
         logger.info("La base de datos ya existe")
+        df_cie10 = ld.cargar_cie10(archivo_CIE10)
 
     else:
         logger.info("Comienza la creación de la Base de Datos...")

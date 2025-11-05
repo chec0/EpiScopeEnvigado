@@ -6,6 +6,7 @@ import pymysql
 import re
 from io import StringIO
 from sqlalchemy import Engine, create_engine, text
+from sqlalchemy.exc import OperationalError
 from urllib.parse import quote_plus
 from etl_modules._config import (
     MYSQL_USER,
@@ -125,8 +126,14 @@ def probar_conexion(engine_db: Engine, bd_name: str = None) -> bool:
                     server_now = str(server_now)
                     logger.success(server_now)
                 return True
+    except OperationalError as e:
+        if e.orig.args[0] == 1049:
+            logger.warning(f"[Error 1049] La base de datos {e.orig.args} no existe.")
+        else:
+            logger.error(f" No se pudo establecer/verificar la conexión: {e.orig.args}")
+        return False
     except Exception as e:
-        logger.error(f"[ERROR] No se pudo establecer/verificar la conexión: {e}")
+        logger.error(f"[ERROR] Inesperado: {e}")
         return False
 
 
@@ -338,9 +345,64 @@ def cargar_municipios(ruta_archivo, hoja: str = None) -> pd.DataFrame:
 
     return dim_muni
 
+
+# ======================================================
+# Función: cargar_cie10
+# ======================================================
 def cargar_cie10(ruta_archivo: str, hoja: str = "Final") -> pd.DataFrame:
     """
-    Carga el catálogo de CIE-10 a la tabla `dim_cie10` en MySQL.
+    Carga el catálogo CIE-10 (Clasificación Internacional de Enfermedades, 10ª revisión)
+    en la tabla `dim_cie10` de la base de datos MySQL.
+
+    Esta función forma parte del proceso ETL para poblar la tabla de dimensión
+    `dim_cie10`, la cual almacena información jerárquica y descriptiva de los
+    códigos CIE-10 usados para clasificar diagnósticos médicos.
+
+    Flujo de ejecución
+    ------------------
+    1. Crea una conexión a la base de datos mediante `crear_conexion(bd=True)`.
+    2. Verifica si la tabla `dim_cie10` ya contiene registros:
+         - Si existen datos, no realiza recarga y retorna un DataFrame vacío.
+         - Si no existe o está vacía, continúa el proceso.
+    3. Extrae los datos desde el archivo Excel utilizando `ed.extraer_cie10()`.
+    4. Limpia y transforma los datos usando `td.limpieza_cie10()`.
+    5. Crea la tabla `dim_cie10` en MySQL si no existe, con su estructura estándar.
+    6. Inserta los datos procesados en la tabla mediante `pandas.to_sql()`.
+    7. Registra en el log el resultado del proceso (éxito o error).
+
+    Parámetros
+    ----------
+    ruta_archivo : str
+        Ruta completa o relativa del archivo Excel que contiene el catálogo CIE-10.
+        Ejemplo: `'data/raw/CIE10_Catalogo.xlsx'`
+    hoja : str, opcional
+        Nombre de la hoja dentro del archivo Excel a leer.
+        Por defecto es `"Final"`.
+
+    Retorna
+    -------
+    pandas.DataFrame
+        DataFrame con los registros del catálogo CIE-10 cargados correctamente.
+        Si la tabla ya existe con datos o ocurre un error, retorna un DataFrame vacío.
+
+    Excepciones
+    -----------
+    Exception
+        Captura cualquier error ocurrido durante la verificación, creación o inserción
+        de datos en la tabla `dim_cie10`.
+
+    Ejemplo
+    -------
+    >>> df_cie10 = cargar_cie10("data/raw/CIE10_Catalogo.xlsx", hoja="Final")
+    📂 Extrayendo catálogo CIE-10...
+    ✅ Catálogo CIE-10 cargado correctamente (14,400 registros)
+
+    Notas
+    -----
+    - La tabla `dim_cie10` incluye información jerárquica por capítulos y categorías
+      de diagnóstico, junto con campos adicionales (`extra_i_aplicaASexo`, `extra_ii_edadMinima`, etc.)
+      que permiten validar condiciones específicas de cada código.
+    - Si la tabla ya contiene datos, el proceso se omite para evitar duplicados.
     """
     engine_db = crear_conexion(bd=True)
 
@@ -352,7 +414,9 @@ def cargar_cie10(ruta_archivo: str, hoja: str = "Final") -> pd.DataFrame:
                 logger.info("ℹ️ La tabla dim_cie10 ya contiene datos, no se recargará.")
                 return pd.DataFrame()
     except Exception:
-        logger.info("⚠️ La tabla dim_cie10 no existe aún o no tiene datos. Se creará y poblará.")
+        logger.info(
+            "⚠️ La tabla dim_cie10 no existe aún o no tiene datos. Se creará y poblará."
+        )
 
     # Extraer y transformar
     df_raw = ed.extraer_cie10(ruta_archivo, hoja)
@@ -379,7 +443,9 @@ def cargar_cie10(ruta_archivo: str, hoja: str = "Final") -> pd.DataFrame:
         with engine_db.begin() as conn:
             conn.execute(text(ddl))
             df_limpio.to_sql("dim_cie10", con=conn, if_exists="append", index=False)
-        logger.success(f"✅ Catálogo CIE-10 cargado correctamente ({len(df_limpio)} registros)")
+        logger.success(
+            f"✅ Catálogo CIE-10 cargado correctamente ({len(df_limpio)} registros)"
+        )
         return df_limpio
     except Exception as e:
         logger.error(f"❌ Error al cargar catálogo CIE-10: {e}")

@@ -2,6 +2,7 @@ from pathlib import Path
 from sqlalchemy import create_engine
 import pandas as pd
 import typer
+from typing import Optional
 
 app = typer.Typer()
 
@@ -71,7 +72,6 @@ def crear_conexion(bd: bool = False):
     return engine_db
 
 
-######### ----- Codigo para traer toda la info del dataset
 # ======================================================
 # Función: obtener_dataset_completo
 # ======================================================
@@ -131,9 +131,71 @@ def obtener_dataset_completo() -> dict[str, pd.DataFrame]:
         return {}
 
 
+def cargar_datasets_locales(
+    processed_dir: Optional[Path] = None,
+) -> dict[str, pd.DataFrame]:
+    """
+    Carga todos los archivos Excel (.xlsx) disponibles en la carpeta 'processed'
+    y los guarda como un diccionario de DataFrames en la variable de sesión.
+
+    Parámetros
+    ----------
+    processed_dir : Path
+        Ruta del directorio 'processed' donde se almacenan los archivos procesados.
+
+    Retorna
+    -------
+    dict[str, pd.DataFrame]
+        Diccionario con los DataFrames cargados.
+        La clave es el nombre base del archivo (sin extensión).
+
+    Ejemplo
+    -------
+    >>> from episcopeenvigado.config import PROCESSED_DATA_DIR
+    >>> datasets = cargar_datasets_locales(PROCESSED_DATA_DIR)
+    >>> list(datasets.keys())
+    ['analisis_coocurrencias_significativas', 'frecuencia_diagnosticos_CIE4', ...]
+
+    Notas
+    -----
+    - Los archivos deben tener extensión .xlsx.
+    - Los DataFrames se almacenan en `st.session_state['datasets_locales']`
+      para reutilizarlos en otros notebooks o apps.
+    """
+    if processed_dir is None:
+        processed_dir = PROCESSED_DATA_DIR  # Valor por defecto real
+
+    processed_dir = Path(processed_dir)
+    if not processed_dir.exists():
+        logger.error(f"❌ No se encontró el directorio: {processed_dir}")
+        return {}
+
+    archivos = list(processed_dir.glob("*.xlsx"))
+    if not archivos:
+        logger.warning(f"⚠️ No se encontraron archivos Excel en {processed_dir}")
+        return {}
+
+    datasets = {}
+    for archivo in archivos:
+        try:
+            df = pd.read_excel(archivo)
+            nombre_base = archivo.stem  # nombre sin extensión
+            datasets[nombre_base] = df
+            logger.success(
+                f"✅ Archivo '{nombre_base}' cargado con {df.shape[0]} filas."
+            )
+        except Exception as e:
+            logger.error(f"⚠️ Error al leer '{archivo.name}': {e}")
+
+    return datasets
+
+
 @app.command()
 def main():
     df = obtener_dataset_completo()
+    datasets = cargar_datasets_locales()
+    list(df.keys())
+    print(datasets.keys())
 
 
 if __name__ == "__main__":

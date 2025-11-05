@@ -18,6 +18,9 @@ def cargar_datos(input_path):
     return data
 
 
+# ======================================================
+# Función: extraer_departamentos
+# ======================================================
 def extraer_departamentos(ruta_archivo, hoja: str = None) -> pd.DataFrame:
     """
     Extrae la información de departamentos desde un archivo Excel.
@@ -58,6 +61,9 @@ def extraer_departamentos(ruta_archivo, hoja: str = None) -> pd.DataFrame:
     return df
 
 
+# ======================================================
+# Función: extraer_municipios
+# ======================================================
 def extraer_municipios(ruta_archivo, hoja: str = None) -> pd.DataFrame:
     """
     Extrae la información de departamentos desde un archivo Excel.
@@ -98,6 +104,10 @@ def extraer_municipios(ruta_archivo, hoja: str = None) -> pd.DataFrame:
 
     return df
 
+
+# ======================================================
+# Función: extraer_cie10
+# ======================================================
 def extraer_cie10(ruta_archivo, hoja: str = "Final") -> pd.DataFrame:
     """
     Extrae la información de la tabla de referencia CIE-10 desde un archivo Excel.

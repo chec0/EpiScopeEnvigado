@@ -32,6 +32,7 @@ dependencies = [
     "cryptography>=46.0.3",
     "streamlit>=1.50.0",
     "scikit-learn>=1.7.2",
+    "statsmodels>=0.14.5",
 ]
 requires-python = "~=3.13.0"
 

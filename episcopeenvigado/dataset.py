@@ -6,7 +6,8 @@ from typing import Optional
 
 app = typer.Typer()
 
-from etl_modules._config import (
+# ✅ Importación corregida (usa el paquete completo)
+from episcopeenvigado.etl_modules._config import (
     MYSQL_USER,
     MYSQL_HOST,
     MYSQL_PORT,

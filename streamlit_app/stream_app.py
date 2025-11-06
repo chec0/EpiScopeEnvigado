@@ -222,26 +222,36 @@ elif page == "🔍 Análisis Exploratorio":
         st.warning("⚠️ La columna 'Estado_Salida_Desc' no existe en el dataset.")
 
     # ===========================================
-    # Distribución por sexo
+    # Distribución por sexo (gráfico de torta)
     # ===========================================
     st.subheader("🧍 Distribución por sexo")
-    if "Sexo" in df_unificado.columns:
-        sexo_counts = (
-            df_unificado["Sexo"]
-            .value_counts()
-            .rename_axis("Sexo")
-            .reset_index(name="Frecuencia")
-        )
-        fig_sexo = px.bar(
+
+    if "SEXO" in df_unificado.columns:
+        # Reemplazar etiquetas
+        df_sexo = df_unificado["SEXO"].replace({"M": "Masculino", "F": "Femenino"})
+        
+        # Contar frecuencia
+        sexo_counts = df_sexo.value_counts().rename_axis("Sexo").reset_index(name="Frecuencia")
+        
+        # Definir colores
+        colores = {"Masculino": "#aec6cf", "Femenino": "#ffb6c1"}  # azul y rosado
+        
+        # Crear gráfico de torta
+        fig_sexo_pie = px.pie(
             sexo_counts,
-            x="Sexo",
-            y="Frecuencia",
-            text="Frecuencia",
+            names="Sexo",
+            values="Frecuencia",
             title="Distribución por sexo de los pacientes",
             color="Sexo",
-            color_discrete_sequence=px.colors.qualitative.Set3
+            color_discrete_map=colores
         )
-        st.plotly_chart(fig_sexo, use_container_width=True)
+        
+        fig_sexo_pie.update_traces(textinfo="label+percent+value")  # Mostrar etiqueta, %, y valor
+        st.plotly_chart(fig_sexo_pie, use_container_width=True)
+
+    else:
+        st.warning("⚠️ La columna 'SEXO' no existe en el dataset.")
+
 
     # ===========================================
     # Histograma de edades
@@ -344,6 +354,49 @@ elif page == "🔍 Análisis Exploratorio":
 
     else:
         st.warning("⚠️ La columna 'Diagnostico_Principal_Desc' no existe en el dataset.")
+
+    # ===========================================
+    # Distribución por causa externa
+    # ===========================================
+    st.subheader("⚠️ Distribución por causa externa")
+
+    if "Causa_Externa_Desc" in df_unificado.columns:
+        # Contar frecuencia
+        causa_counts = (
+            df_unificado["Causa_Externa_Desc"]
+            .value_counts()
+            .rename_axis("Causa_Externa_Desc")
+            .reset_index(name="Frecuencia")
+        )
+
+        # Ordenar de mayor a menor
+        causa_counts = causa_counts.sort_values("Frecuencia", ascending=True)
+
+        # Crear gráfico de barras horizontales con colores pastel
+        colores = px.colors.qualitative.Pastel  # paleta pastel
+
+        fig_causa = px.bar(
+            causa_counts,
+            x="Frecuencia",
+            y="Causa_Externa_Desc",
+            orientation="h",
+            text="Frecuencia",
+            title="Distribución de causas externas",
+            color="Causa_Externa_Desc",
+            color_discrete_sequence=colores
+        )
+
+        # Actualizar layout: eje y con nombre personalizado y quitar leyenda
+        fig_causa.update_layout(
+            yaxis_title="Causa Externa",
+            yaxis=dict(autorange="reversed"),
+            showlegend=False
+        )
+
+        st.plotly_chart(fig_causa, use_container_width=True)
+
+    else:
+        st.warning("⚠️ La columna 'Causa_Externa_Desc' no existe en el dataset.")
 
 
 # ==============================================

@@ -547,6 +547,11 @@ def preparacion_dataset(df) -> bool:
         15: "OTRA",
     }
 
+    CAT_ESTADO_SALIDA = {
+        1: "VIVO",
+        2: "MUERTO"
+    }
+
     # =========================
     # CONSTRUCCIÓN DE DIMENSIONES (con IDs sustitutos)
     # =========================
@@ -577,7 +582,9 @@ def preparacion_dataset(df) -> bool:
         .rename(columns={"Estado_Salida": "estado_salida_cod"})
         .assign(
             estado_salida_desc=lambda d: d["estado_salida_cod"]
-        )  # puedes mapear a cat oficial si lo tienes
+            .astype("Int64")
+            .map(CAT_ESTADO_SALIDA)
+        )
         .reset_index(drop=True)
     )
     dim_estado.insert(0, "estado_salida_id", range(1, len(dim_estado) + 1))

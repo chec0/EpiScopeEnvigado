@@ -3,8 +3,14 @@ import os
 import pandas as pd
 import numpy as np
 import plotly.express as px
-from episcopeenvigado.dataset import obtener_dataset_completo
+from episcopeenvigado.dataset import obtener_dataset_completo,cargar_datasets_locales
 from episcopeenvigado.etl_modules.unificar_tablas import unificar_dataset
+from episcopeenvigado.config import PROCESSED_DATA_DIR
+import networkx as nx
+from pyvis.network import Network
+import matplotlib.cm as cm
+import matplotlib.colors as mcolors
+from io import StringIO
 
 # ==============================================
 # CONFIGURACIÓN GENERAL
@@ -254,75 +260,100 @@ elif page == "🔍 Análisis Exploratorio":
 
 
     # ===========================================
-    # Histograma de edades
+    # Histograma de edades (sin negativos)
     # ===========================================
     st.subheader("📊 Histograma de edades")
     if "EDAD_ANIOS" in df_unificado.columns:
-        edades = df_unificado["EDAD_ANIOS"].dropna()
-        num_clases = int(1 + 3.3 * np.log10(len(edades)))
+        edades = df_unificado["EDAD_ANIOS"]
+        edades = edades[(edades >= 0) & (edades <= 120)].dropna()
 
-        fig_hist = px.histogram(
-            edades,
-            x=edades,
-            nbins=num_clases,
-            title="Histograma de edades de los pacientes",
-            color_discrete_sequence=['#636EFA'],
-            marginal="box",
-            labels={"x": "Edad (años)", "y": "Frecuencia"},
-            text_auto=True   # <- esto agrega automáticamente los valores sobre las barras
-        )
-        fig_hist.update_layout(bargap=0.05)
-        st.plotly_chart(fig_hist, use_container_width=True)
+        if len(edades) > 0:
+            num_clases = int(1 + 3.3 * np.log10(len(edades)))
+
+            fig_hist = px.histogram(
+                edades,
+                x=edades,
+                nbins=num_clases,
+                title="Histograma de edades de los pacientes",
+                color_discrete_sequence=['#636EFA'],
+                marginal="box",
+                labels={"x": "Edad (años)", "y": "Frecuencia"},
+                text_auto=True
+            )
+
+            fig_hist.update_layout(
+                bargap=0.05,
+                xaxis=dict(range=[0, edades.max() + 5])  # evita valores negativos
+            )
+
+            st.plotly_chart(fig_hist, use_container_width=True)
+        else:
+            st.info("ℹ️ No hay datos válidos de edad en el dataset.")
     else:
         st.warning("⚠️ La columna 'EDAD_ANIOS' no existe en el dataset.")
-        
-    import calendar
 
-    # ===========================================
-    # Frecuencia de atenciones por mes (2023 vs 2024)
-    # ===========================================
-    st.subheader("📅 Frecuencia de atenciones por mes (2023 vs 2024)")
 
-    if "Fecha_Ingreso" in df_unificado.columns:
-        df_fecha = df_unificado.copy()
-        
-        # Asegurarnos de que sea datetime
-        df_fecha["Fecha_Ingreso"] = pd.to_datetime(df_fecha["Fecha_Ingreso"], errors='coerce')
-        
-        # Extraer año y mes
-        df_fecha["Año"] = df_fecha["Fecha_Ingreso"].dt.year
-        df_fecha["Mes_Num"] = df_fecha["Fecha_Ingreso"].dt.month
-        
-        # Mapear números de mes a nombres
-        df_fecha["Mes"] = df_fecha["Mes_Num"].apply(lambda x: calendar.month_abbr[x])
-        
-        # Filtrar solo años 2023 y 2024
-        df_filtrado = df_fecha[df_fecha["Año"].isin([2023, 2024])]
-        
-        # Agrupar por año y mes
-        atenciones_mes = (
-            df_filtrado.groupby(["Año", "Mes_Num", "Mes"])
-            .size()
-            .reset_index(name="Frecuencia")
-        )
-        
-        # Ordenar por mes
-        atenciones_mes = atenciones_mes.sort_values(["Año", "Mes_Num"])
-        
-        # Crear gráfico de líneas
-        fig_line = px.line(
-            atenciones_mes,
-            x="Mes",
-            y="Frecuencia",
-            color="Año",
-            markers=True,
-            title="Frecuencia mensual de atenciones (2023 vs 2024)",
-            labels={"Mes": "Mes", "Frecuencia": "Número de atenciones", "Año": "Año"}
-        )
-        
-        st.plotly_chart(fig_line, use_container_width=True)
+    
+    # ===========================================
+    # Histograma de duración de hospitalización (Plotly mejorado)
+    # ===========================================
+    st.subheader("⏱️ Histograma de duración de hospitalización (en días)")
+
+    import numpy as np
+    import plotly.express as px
+
+    if "Duracion_Dias" in df_unificado.columns:
+        duracion = df_unificado["Duracion_Dias"].dropna()
+
+        if len(duracion) > 0:
+            # Filtrar valores extremos para mejor visualización
+            duracion_filtrada = duracion[duracion <= 60]
+
+            # Cálculo de parámetros de clase (Sturges)
+            rango = duracion_filtrada.max() - duracion_filtrada.min()
+            num_clases = int(1 + 3.3 * np.log10(len(duracion_filtrada)))
+            ancho_clases = rango / num_clases
+
+            # Crear histograma con Plotly
+            fig_duracion = px.histogram(
+                duracion_filtrada,
+                x=duracion_filtrada,
+                nbins=num_clases,
+                color_discrete_sequence=['#A8E6A3'],  # verde pastel
+                marginal="box",
+                title="Histograma de duración de hospitalización (≤ 60 días)",
+                labels={"x": "Duración (días)", "y": "Frecuencia"},
+                text_auto=True  # mostrar frecuencia sobre las barras
+            )
+
+            # Ajustes de layout
+            fig_duracion.update_traces(marker_line_width=0.5, opacity=0.85)
+            fig_duracion.update_layout(
+                bargap=0.05,
+                yaxis_title="Frecuencia",
+                title_font=dict(size=15),
+                template="plotly_white"
+            )
+
+            # Mostrar límites de clase reales en el eje X
+            fig_duracion.update_xaxes(
+                tickmode='linear',
+                dtick=ancho_clases,
+                tick0=duracion_filtrada.min(),
+                tickfont=dict(size=10)
+            )
+
+            # Mostrar gráfico
+            st.plotly_chart(fig_duracion, use_container_width=True)
+
+            # Mostrar información de clases calculadas
+            st.caption(f"📏 Rango: {rango:.1f} días | Clases: {num_clases} | Ancho de clase: {ancho_clases:.2f} días")
+
+        else:
+            st.info("ℹ️ No hay datos disponibles en la columna 'Duracion_Dias'.")
     else:
-        st.warning("⚠️ La columna 'Fecha_Ingreso' no existe en el dataset.")
+        st.warning("⚠️ La columna 'Duracion_Dias' no existe en el dataset.")
+
    
     # ===========================================
     # Top 10 diagnósticos principales como mapa de calor vertical
@@ -402,9 +433,116 @@ elif page == "🔍 Análisis Exploratorio":
 # ==============================================
 # PÁGINAS PLACEHOLDER
 # ==============================================
-elif page == "🤖 Modelo Predictivo":
+# ======================================================
+# SECCIÓN: 🤖 MODELO PREDICTIVO
+# ======================================================
+
+# --- Funciones auxiliares (van fuera de la condición de página) ---
+def crear_grafo(df: pd.DataFrame, dx_central: str) -> nx.Graph:
+    """Crea un grafo con colores según OR y grosor según coocurrencia."""
+    G = nx.Graph()
+
+    norm = mcolors.Normalize(vmin=df["OR"].min(), vmax=df["OR"].max())
+    cmap = cm.get_cmap("YlOrRd")
+
+    for _, row in df.iterrows():
+        for dx, desc in [(row["Dx1"], row.get("Desc1", "")), (row["Dx2"], row.get("Desc2", ""))]:
+            if dx not in G.nodes:
+                G.add_node(
+                    dx,
+                    title=desc,
+                    color="red" if dx == dx_central else "#87CEEB",
+                    size=30 if dx == dx_central else 20,
+                )
+
+        rgba = cmap(norm(row["OR"]))
+        hex_color = mcolors.to_hex(rgba)
+        width = min(max(row["count_coocurrence"] / 5, 2), 8)
+
+        G.add_edge(
+            row["Dx1"], row["Dx2"],
+            color=hex_color,
+            width=width,
+            title=f"Coocurrencias: {row['count_coocurrence']} | OR={row['OR']:.2f}"
+        )
+
+    return G
+
+
+def visualizar_red(df: pd.DataFrame, dx_sel: str):
+    """Muestra la red interactiva en Streamlit."""
+    G = crear_grafo(df, dx_sel)
+    net = Network(height="700px", width="100%", bgcolor="#ffffff", font_color="black")
+    net.from_nx(G)
+    net.repulsion(node_distance=280, spring_length=180, damping=0.8)
+    html_str = net.generate_html()
+    st.components.v1.html(html_str, height=750, scrolling=True)
+
+
+# --- Aquí sí comienza el bloque principal de la página ---
+if page == "🤖 Modelo Predictivo":
     st.title("🤖 Modelo Predictivo")
-    st.info("Aquí se integrará el modelo de predicción basado en diagnósticos CIE-10 para estimar demanda hospitalaria. 📊")
+    st.markdown("### Análisis de Coocurrencias Significativas entre Diagnósticos")
+
+    # Cargar datasets procesados
+    if "datasets_locales" not in st.session_state:
+        with st.spinner("Cargando archivos procesados..."):
+            st.session_state["datasets_locales"] = cargar_datasets_locales(PROCESSED_DATA_DIR)
+
+    datasets = st.session_state["datasets_locales"]
+
+    if "analisis_coocurrencias_significativas" not in datasets:
+        st.warning("⚠️ No se encontró el archivo 'analisis_coocurrencias_significativas.xlsx'.")
+    else:
+        df_cooc = datasets["analisis_coocurrencias_significativas"]
+
+        # ======================================================
+        # 1️⃣ Checkbox – Análisis general
+        # ======================================================
+        if st.checkbox("📊 Análisis de concurrencias significativas"):
+            st.markdown(f"**{len(df_cooc):,} asociaciones significativas encontradas.**")
+            st.dataframe(df_cooc)
+
+        # ======================================================
+        # 2️⃣ Checkbox – Filtro por diagnóstico
+        # ======================================================
+        if st.checkbox("🔗 Asociaciones fuertes con filtro por diagnóstico"):
+            desc_map = {
+                **dict(zip(df_cooc["Dx1"], df_cooc["Desc1"])),
+                **dict(zip(df_cooc["Dx2"], df_cooc["Desc2"]))
+            }
+
+            opciones = [
+                f"{dx} — {desc_map.get(dx, 'Sin descripción')}"
+                for dx in sorted(set(df_cooc["Dx1"]) | set(df_cooc["Dx2"]))
+            ]
+            seleccion = st.selectbox("Selecciona diagnóstico:", options=opciones)
+            dx_sel = seleccion.split(" — ")[0]
+
+            df_filtrado = df_cooc[
+                (df_cooc["Dx1"] == dx_sel) | (df_cooc["Dx2"] == dx_sel)
+            ].sort_values("OR", ascending=False)
+
+            st.markdown(f"### {len(df_filtrado)} asociaciones con **{dx_sel} — {desc_map.get(dx_sel, 'Sin descripción')}**")
+            st.dataframe(df_filtrado)
+
+            # Gráfico descriptivo
+            fig = px.scatter(
+                df_filtrado,
+                x="p_value_adj",
+                y="OR",
+                color="OR",
+                size="count_coocurrence",
+                hover_data=["Dx1", "Dx2", "Desc1", "Desc2"],
+                title=f"Relación entre {dx_sel} y otros diagnósticos"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+            # Red interactiva
+            if st.button("🌐 Visualizar red de coocurrencias"):
+                df_top = df_filtrado[df_filtrado["count_coocurrence"] >= 5]
+                visualizar_red(df_top, dx_sel)
+
 
 elif page == "📈 Dashboard":
     st.title("📈 Dashboard")

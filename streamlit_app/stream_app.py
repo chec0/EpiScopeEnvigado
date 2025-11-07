@@ -254,75 +254,100 @@ elif page == "🔍 Análisis Exploratorio":
 
 
     # ===========================================
-    # Histograma de edades
+    # Histograma de edades (sin negativos)
     # ===========================================
     st.subheader("📊 Histograma de edades")
     if "EDAD_ANIOS" in df_unificado.columns:
-        edades = df_unificado["EDAD_ANIOS"].dropna()
-        num_clases = int(1 + 3.3 * np.log10(len(edades)))
+        edades = df_unificado["EDAD_ANIOS"]
+        edades = edades[(edades >= 0) & (edades <= 120)].dropna()
 
-        fig_hist = px.histogram(
-            edades,
-            x=edades,
-            nbins=num_clases,
-            title="Histograma de edades de los pacientes",
-            color_discrete_sequence=['#636EFA'],
-            marginal="box",
-            labels={"x": "Edad (años)", "y": "Frecuencia"},
-            text_auto=True   # <- esto agrega automáticamente los valores sobre las barras
-        )
-        fig_hist.update_layout(bargap=0.05)
-        st.plotly_chart(fig_hist, use_container_width=True)
+        if len(edades) > 0:
+            num_clases = int(1 + 3.3 * np.log10(len(edades)))
+
+            fig_hist = px.histogram(
+                edades,
+                x=edades,
+                nbins=num_clases,
+                title="Histograma de edades de los pacientes",
+                color_discrete_sequence=['#636EFA'],
+                marginal="box",
+                labels={"x": "Edad (años)", "y": "Frecuencia"},
+                text_auto=True
+            )
+
+            fig_hist.update_layout(
+                bargap=0.05,
+                xaxis=dict(range=[0, edades.max() + 5])  # evita valores negativos
+            )
+
+            st.plotly_chart(fig_hist, use_container_width=True)
+        else:
+            st.info("ℹ️ No hay datos válidos de edad en el dataset.")
     else:
         st.warning("⚠️ La columna 'EDAD_ANIOS' no existe en el dataset.")
-        
-    import calendar
 
-    # ===========================================
-    # Frecuencia de atenciones por mes (2023 vs 2024)
-    # ===========================================
-    st.subheader("📅 Frecuencia de atenciones por mes (2023 vs 2024)")
 
-    if "Fecha_Ingreso" in df_unificado.columns:
-        df_fecha = df_unificado.copy()
-        
-        # Asegurarnos de que sea datetime
-        df_fecha["Fecha_Ingreso"] = pd.to_datetime(df_fecha["Fecha_Ingreso"], errors='coerce')
-        
-        # Extraer año y mes
-        df_fecha["Año"] = df_fecha["Fecha_Ingreso"].dt.year
-        df_fecha["Mes_Num"] = df_fecha["Fecha_Ingreso"].dt.month
-        
-        # Mapear números de mes a nombres
-        df_fecha["Mes"] = df_fecha["Mes_Num"].apply(lambda x: calendar.month_abbr[x])
-        
-        # Filtrar solo años 2023 y 2024
-        df_filtrado = df_fecha[df_fecha["Año"].isin([2023, 2024])]
-        
-        # Agrupar por año y mes
-        atenciones_mes = (
-            df_filtrado.groupby(["Año", "Mes_Num", "Mes"])
-            .size()
-            .reset_index(name="Frecuencia")
-        )
-        
-        # Ordenar por mes
-        atenciones_mes = atenciones_mes.sort_values(["Año", "Mes_Num"])
-        
-        # Crear gráfico de líneas
-        fig_line = px.line(
-            atenciones_mes,
-            x="Mes",
-            y="Frecuencia",
-            color="Año",
-            markers=True,
-            title="Frecuencia mensual de atenciones (2023 vs 2024)",
-            labels={"Mes": "Mes", "Frecuencia": "Número de atenciones", "Año": "Año"}
-        )
-        
-        st.plotly_chart(fig_line, use_container_width=True)
+    
+    # ===========================================
+    # Histograma de duración de hospitalización (Plotly mejorado)
+    # ===========================================
+    st.subheader("⏱️ Histograma de duración de hospitalización (en días)")
+
+    import numpy as np
+    import plotly.express as px
+
+    if "Duracion_Dias" in df_unificado.columns:
+        duracion = df_unificado["Duracion_Dias"].dropna()
+
+        if len(duracion) > 0:
+            # Filtrar valores extremos para mejor visualización
+            duracion_filtrada = duracion[duracion <= 60]
+
+            # Cálculo de parámetros de clase (Sturges)
+            rango = duracion_filtrada.max() - duracion_filtrada.min()
+            num_clases = int(1 + 3.3 * np.log10(len(duracion_filtrada)))
+            ancho_clases = rango / num_clases
+
+            # Crear histograma con Plotly
+            fig_duracion = px.histogram(
+                duracion_filtrada,
+                x=duracion_filtrada,
+                nbins=num_clases,
+                color_discrete_sequence=['#A8E6A3'],  # verde pastel
+                marginal="box",
+                title="Histograma de duración de hospitalización (≤ 60 días)",
+                labels={"x": "Duración (días)", "y": "Frecuencia"},
+                text_auto=True  # mostrar frecuencia sobre las barras
+            )
+
+            # Ajustes de layout
+            fig_duracion.update_traces(marker_line_width=0.5, opacity=0.85)
+            fig_duracion.update_layout(
+                bargap=0.05,
+                yaxis_title="Frecuencia",
+                title_font=dict(size=15),
+                template="plotly_white"
+            )
+
+            # Mostrar límites de clase reales en el eje X
+            fig_duracion.update_xaxes(
+                tickmode='linear',
+                dtick=ancho_clases,
+                tick0=duracion_filtrada.min(),
+                tickfont=dict(size=10)
+            )
+
+            # Mostrar gráfico
+            st.plotly_chart(fig_duracion, use_container_width=True)
+
+            # Mostrar información de clases calculadas
+            st.caption(f"📏 Rango: {rango:.1f} días | Clases: {num_clases} | Ancho de clase: {ancho_clases:.2f} días")
+
+        else:
+            st.info("ℹ️ No hay datos disponibles en la columna 'Duracion_Dias'.")
     else:
-        st.warning("⚠️ La columna 'Fecha_Ingreso' no existe en el dataset.")
+        st.warning("⚠️ La columna 'Duracion_Dias' no existe en el dataset.")
+
    
     # ===========================================
     # Top 10 diagnósticos principales como mapa de calor vertical

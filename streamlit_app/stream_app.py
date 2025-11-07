@@ -3,8 +3,14 @@ import os
 import pandas as pd
 import numpy as np
 import plotly.express as px
-from episcopeenvigado.dataset import obtener_dataset_completo
+from episcopeenvigado.dataset import obtener_dataset_completo,cargar_datasets_locales
 from episcopeenvigado.etl_modules.unificar_tablas import unificar_dataset
+from episcopeenvigado.config import PROCESSED_DATA_DIR
+import networkx as nx
+from pyvis.network import Network
+import matplotlib.cm as cm
+import matplotlib.colors as mcolors
+from io import StringIO
 
 # ==============================================
 # CONFIGURACIÓN GENERAL
@@ -427,9 +433,116 @@ elif page == "🔍 Análisis Exploratorio":
 # ==============================================
 # PÁGINAS PLACEHOLDER
 # ==============================================
-elif page == "🤖 Modelo Predictivo":
+# ======================================================
+# SECCIÓN: 🤖 MODELO PREDICTIVO
+# ======================================================
+
+# --- Funciones auxiliares (van fuera de la condición de página) ---
+def crear_grafo(df: pd.DataFrame, dx_central: str) -> nx.Graph:
+    """Crea un grafo con colores según OR y grosor según coocurrencia."""
+    G = nx.Graph()
+
+    norm = mcolors.Normalize(vmin=df["OR"].min(), vmax=df["OR"].max())
+    cmap = cm.get_cmap("YlOrRd")
+
+    for _, row in df.iterrows():
+        for dx, desc in [(row["Dx1"], row.get("Desc1", "")), (row["Dx2"], row.get("Desc2", ""))]:
+            if dx not in G.nodes:
+                G.add_node(
+                    dx,
+                    title=desc,
+                    color="red" if dx == dx_central else "#87CEEB",
+                    size=30 if dx == dx_central else 20,
+                )
+
+        rgba = cmap(norm(row["OR"]))
+        hex_color = mcolors.to_hex(rgba)
+        width = min(max(row["count_coocurrence"] / 5, 2), 8)
+
+        G.add_edge(
+            row["Dx1"], row["Dx2"],
+            color=hex_color,
+            width=width,
+            title=f"Coocurrencias: {row['count_coocurrence']} | OR={row['OR']:.2f}"
+        )
+
+    return G
+
+
+def visualizar_red(df: pd.DataFrame, dx_sel: str):
+    """Muestra la red interactiva en Streamlit."""
+    G = crear_grafo(df, dx_sel)
+    net = Network(height="700px", width="100%", bgcolor="#ffffff", font_color="black")
+    net.from_nx(G)
+    net.repulsion(node_distance=280, spring_length=180, damping=0.8)
+    html_str = net.generate_html()
+    st.components.v1.html(html_str, height=750, scrolling=True)
+
+
+# --- Aquí sí comienza el bloque principal de la página ---
+if page == "🤖 Modelo Predictivo":
     st.title("🤖 Modelo Predictivo")
-    st.info("Aquí se integrará el modelo de predicción basado en diagnósticos CIE-10 para estimar demanda hospitalaria. 📊")
+    st.markdown("### Análisis de Coocurrencias Significativas entre Diagnósticos")
+
+    # Cargar datasets procesados
+    if "datasets_locales" not in st.session_state:
+        with st.spinner("Cargando archivos procesados..."):
+            st.session_state["datasets_locales"] = cargar_datasets_locales(PROCESSED_DATA_DIR)
+
+    datasets = st.session_state["datasets_locales"]
+
+    if "analisis_coocurrencias_significativas" not in datasets:
+        st.warning("⚠️ No se encontró el archivo 'analisis_coocurrencias_significativas.xlsx'.")
+    else:
+        df_cooc = datasets["analisis_coocurrencias_significativas"]
+
+        # ======================================================
+        # 1️⃣ Checkbox – Análisis general
+        # ======================================================
+        if st.checkbox("📊 Análisis de concurrencias significativas"):
+            st.markdown(f"**{len(df_cooc):,} asociaciones significativas encontradas.**")
+            st.dataframe(df_cooc)
+
+        # ======================================================
+        # 2️⃣ Checkbox – Filtro por diagnóstico
+        # ======================================================
+        if st.checkbox("🔗 Asociaciones fuertes con filtro por diagnóstico"):
+            desc_map = {
+                **dict(zip(df_cooc["Dx1"], df_cooc["Desc1"])),
+                **dict(zip(df_cooc["Dx2"], df_cooc["Desc2"]))
+            }
+
+            opciones = [
+                f"{dx} — {desc_map.get(dx, 'Sin descripción')}"
+                for dx in sorted(set(df_cooc["Dx1"]) | set(df_cooc["Dx2"]))
+            ]
+            seleccion = st.selectbox("Selecciona diagnóstico:", options=opciones)
+            dx_sel = seleccion.split(" — ")[0]
+
+            df_filtrado = df_cooc[
+                (df_cooc["Dx1"] == dx_sel) | (df_cooc["Dx2"] == dx_sel)
+            ].sort_values("OR", ascending=False)
+
+            st.markdown(f"### {len(df_filtrado)} asociaciones con **{dx_sel} — {desc_map.get(dx_sel, 'Sin descripción')}**")
+            st.dataframe(df_filtrado)
+
+            # Gráfico descriptivo
+            fig = px.scatter(
+                df_filtrado,
+                x="p_value_adj",
+                y="OR",
+                color="OR",
+                size="count_coocurrence",
+                hover_data=["Dx1", "Dx2", "Desc1", "Desc2"],
+                title=f"Relación entre {dx_sel} y otros diagnósticos"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+            # Red interactiva
+            if st.button("🌐 Visualizar red de coocurrencias"):
+                df_top = df_filtrado[df_filtrado["count_coocurrence"] >= 5]
+                visualizar_red(df_top, dx_sel)
+
 
 elif page == "📈 Dashboard":
     st.title("📈 Dashboard")

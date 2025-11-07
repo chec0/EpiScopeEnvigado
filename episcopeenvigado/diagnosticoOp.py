@@ -33,18 +33,6 @@ from episcopeenvigado.config import PROCESSED_DATA_DIR
 def exportar_excel(df: pd.DataFrame, nombre: str):
     """
     Exporta un DataFrame a un archivo Excel dentro del directorio especificado.
-
-    Parámetros
-    ----------
-    df : pd.DataFrame
-        DataFrame que se desea exportar.
-    nombre : str
-        Nombre del archivo de salida (incluye extensión .xlsx).
-
-    Retorna
-    -------
-    None
-        Solo guarda el archivo y registra el evento en el log.
     """
     ruta_salida = PROCESSED_DATA_DIR / nombre
     df.to_excel(ruta_salida, index=False)
@@ -54,42 +42,24 @@ def exportar_excel(df: pd.DataFrame, nombre: str):
 def limpiar_diagnosticos(df: pd.DataFrame) -> pd.DataFrame:
     """
     Limpia y normaliza los códigos de diagnóstico:
-    convierte a mayúsculas, elimina espacios, valores nulos y cadenas vacías.
-
-    Parámetros
-    ----------
-    df : pd.DataFrame
-        DataFrame con columnas de diagnósticos.
-
-    Retorna
-    -------
-    pd.DataFrame
-        DataFrame con los valores normalizados.
+    convierte a mayúsculas, elimina espacios, valores nulos, 'NONE', 'NON' y cadenas vacías.
     """
     df = df.copy()
     for col in df.columns:
         df[col] = (
-            df[col].astype(str).str.strip().str.upper().replace({"NAN": None, "": None})
+            df[col]
+            .astype(str)
+            .str.strip()
+            .str.upper()
+            .replace({"NAN": None, "": None, "NONE": None, "NON": None})
         )
-        df[col] = df[col].where(df[col].notna())  # filtra None
+        df[col] = df[col].where(df[col].notna())  # conserva solo valores válidos
     return df
 
 
 def consolidar_4dig(df: pd.DataFrame, dx_cols: list) -> pd.DataFrame:
     """
     Consolida los diagnósticos de 4 dígitos por paciente (ID).
-
-    Parámetros
-    ----------
-    df : pd.DataFrame
-        Tabla de hechos con diagnósticos por atención.
-    dx_cols : list
-        Columnas que contienen los códigos CIE-10.
-
-    Retorna
-    -------
-    pd.DataFrame
-        DataFrame con una lista de diagnósticos por paciente (dx_list_4dig).
     """
     df_dx = limpiar_diagnosticos(df[dx_cols])
     consolidado = df_dx.groupby(df["ID"]).agg(lambda x: list(x.dropna()))
@@ -97,7 +67,7 @@ def consolidar_4dig(df: pd.DataFrame, dx_cols: list) -> pd.DataFrame:
         lambda row: [
             dx
             for dx in set(itertools.chain.from_iterable(row))
-            if dx not in [None, "NONE"]
+            if dx not in [None, "NONE", "NON"]
         ],
         axis=1,
     )
@@ -107,21 +77,14 @@ def consolidar_4dig(df: pd.DataFrame, dx_cols: list) -> pd.DataFrame:
 def consolidar_3dig(df: pd.DataFrame, dx_cols: list) -> pd.DataFrame:
     """
     Consolida los diagnósticos a 3 dígitos, excluyendo códigos 'Z' y 'R'.
-
-    Parámetros
-    ----------
-    df : pd.DataFrame
-        Tabla de hechos con diagnósticos por atención.
-    dx_cols : list
-        Columnas que contienen los códigos CIE-10.
-
-    Retorna
-    -------
-    pd.DataFrame
-        DataFrame con diagnósticos de 3 dígitos consolidados (dx_list_3dig).
     """
+    df_dx = limpiar_diagnosticos(df[dx_cols])
 
-    df_dx = limpiar_diagnosticos(df[dx_cols]).applymap(lambda x: x[:3] if x else None)
+    # Convertir cada celda a string segura y truncar a 3 caracteres
+    for col in df_dx.columns:
+        df_dx[col] = df_dx[col].map(lambda x: str(x)[:3] if pd.notna(x) and isinstance(x, (str, int, float)) else None)
+
+    # Agrupar por ID y consolidar diagnósticos únicos
     consolidado = df_dx.groupby(df["ID"]).agg(lambda x: list(x.dropna()))
     consolidado["dx_list_3dig"] = consolidado.apply(
         lambda row: [
@@ -131,10 +94,12 @@ def consolidar_3dig(df: pd.DataFrame, dx_cols: list) -> pd.DataFrame:
         ],
         axis=1,
     )
+
     # Excluir códigos Z y R
     consolidado["dx_list_3dig"] = consolidado["dx_list_3dig"].apply(
-        lambda l: [dx for dx in l if dx[0] not in ["Z", "R"]]
+        lambda l: [dx for dx in l if isinstance(dx, str) and len(dx) >= 3 and dx[0] not in ["Z", "R"]]
     )
+
     return consolidado
 
 
@@ -143,20 +108,7 @@ def calcular_frecuencias(
 ) -> pd.DataFrame:
     """
     Calcula las frecuencias de diagnóstico y número de pacientes únicos por código.
-
-    Parámetros
-    ----------
-    consolidado_4dig : pd.DataFrame
-        Diagnósticos por paciente a 4 dígitos.
-    cie : pd.DataFrame
-        Catálogo CIE-10 con descripciones.
-
-    Retorna
-    -------
-    pd.DataFrame
-        Tabla resumen con frecuencia total, número de pacientes y descripciones.
     """
-
     cie_dict_3 = cie.set_index("cie_3cat")["desc_3cat"].to_dict()
     cie_dict_4 = cie.set_index("cie_4cat")["desc_4cat"].to_dict()
 
@@ -186,20 +138,6 @@ def calcular_frecuencias(
 def crear_matriz_binaria(consolidado_3dig: pd.DataFrame, frecuencia_minima: int = 30):
     """
     Crea una matriz binaria (paciente x diagnóstico) y filtra por frecuencia mínima.
-
-    Parámetros
-    ----------
-    consolidado_3dig : pd.DataFrame
-        Diagnósticos por paciente (3 dígitos).
-    frecuencia_minima : int, opcional
-        Umbral mínimo de pacientes por diagnóstico. Default = 30.
-
-    Retorna
-    -------
-    matriz_filtrada : scipy.sparse.csr_matrix
-        Matriz binaria paciente-diagnóstico.
-    diagnosticos_filtrados : list
-        Lista de diagnósticos que cumplen el umbral.
     """
     diagnosticos_unicos = sorted(
         set(itertools.chain.from_iterable(consolidado_3dig["dx_list_3dig"]))
@@ -223,22 +161,7 @@ def crear_matriz_binaria(consolidado_3dig: pd.DataFrame, frecuencia_minima: int 
 def analizar_coocurrencias_estadistico(matriz, diagnosticos, cie_dict_3):
     """
     Calcula la coocurrencia estadística entre diagnósticos mediante Chi² y Odds Ratio (OR).
-
-    Parámetros
-    ----------
-    matriz : scipy.sparse.csr_matrix
-        Matriz binaria paciente-diagnóstico.
-    diagnosticos : list
-        Lista de diagnósticos en el mismo orden que las columnas de la matriz.
-    cie_dict_3 : dict
-        Diccionario {cie_3cat: descripción} del catálogo CIE-10.
-
-    Retorna
-    -------
-    pd.DataFrame
-        Tabla con resultados estadísticos (Chi², OR, IC95%, p-value y p-value ajustado).
     """
-
     n = matriz.shape[0]
     col_sums = np.array(matriz.sum(axis=0)).ravel()
     cooc = triu(matriz.T @ matriz, k=1).tocoo()

@@ -73,7 +73,7 @@ def limpieza_datos(df: pd.DataFrame):
     df["UNIDAD_EDAD_TXT"] = df["UNIDAD EDAD"].astype("string").map(MAP_UNIDAD_EDAD)
 
     # Duración de estancia (derivada)
-    df["Duracion_Dias"] = (df["Fecha_Egreso"] - df["Fecha_Ingreso"]).dt.days
+    df["Duracion_Dias"] = (df["Fecha_Egreso"] - df["Fecha_Ingreso"]).dt.days + 1
     df.loc[df["Duracion_Dias"] < 0, "Duracion_Dias"] = pd.NA
 
     return df

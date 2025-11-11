@@ -3,8 +3,11 @@ import os
 import pandas as pd
 import numpy as np
 import plotly.express as px
-from episcopeenvigado.dataset import obtener_dataset_completo,cargar_datasets_locales
-from episcopeenvigado.etl_modules.unificar_tablas import unificar_dataset
+from episcopeenvigado.dataset import (
+    obtener_dataset_completo,
+    cargar_datasets_locales,
+    unificar_dataset,
+)
 from episcopeenvigado.config import PROCESSED_DATA_DIR
 import networkx as nx
 from pyvis.network import Network
@@ -48,7 +51,9 @@ st.sidebar.markdown("© 2025")
 # ==============================================
 if page == "🏠 Home":
     st.title("🏥 EpiScope Envigado")
-    st.markdown("### Analítica predictiva para la planeación hospitalaria y epidemiológica en Envigado")
+    st.markdown(
+        "### Analítica predictiva para la planeación hospitalaria y epidemiológica en Envigado"
+    )
     st.markdown("---")
 
     st.markdown("""
@@ -130,7 +135,9 @@ if page == "🏠 Home":
     """)
 
     st.markdown("---")
-    st.markdown("© 2025 - Proyecto EpiScope Envigado | Analítica Predictiva para la Salud Pública 🩺")
+    st.markdown(
+        "© 2025 - Proyecto EpiScope Envigado | Analítica Predictiva para la Salud Pública 🩺"
+    )
 
 
 # ==============================================
@@ -144,7 +151,7 @@ elif page == "🔍 Análisis Exploratorio":
     # Cargar y unificar datos
     # ===========================
     with st.spinner("Cargando dataset completo desde la base de datos..."):
-        datasets = obtener_dataset_completo()  
+        datasets = obtener_dataset_completo()
 
     if not datasets:
         st.error("❌ No se pudieron cargar las tablas desde la base de datos.")
@@ -157,7 +164,9 @@ elif page == "🔍 Análisis Exploratorio":
         st.stop()
 
     if df_unificado is None or df_unificado.empty:
-        st.warning("⚠️ El dataset unificado está vacío o no se pudo generar correctamente.")
+        st.warning(
+            "⚠️ El dataset unificado está vacío o no se pudo generar correctamente."
+        )
         st.stop()
 
     # ===========================================
@@ -167,12 +176,16 @@ elif page == "🔍 Análisis Exploratorio":
     st.write(f"Registros totales: **{len(df_unificado):,}**")
 
     if st.checkbox("Mostrar descripción de columnas"):
-        col_desc = pd.DataFrame({
-            "Columna": df_unificado.columns,
-            "Tipo": [df_unificado[col].dtype for col in df_unificado.columns],
-            "Count": [df_unificado[col].count() for col in df_unificado.columns],
-            "Nulos": [df_unificado[col].isna().sum() for col in df_unificado.columns]
-        })
+        col_desc = pd.DataFrame(
+            {
+                "Columna": df_unificado.columns,
+                "Tipo": [df_unificado[col].dtype for col in df_unificado.columns],
+                "Count": [df_unificado[col].count() for col in df_unificado.columns],
+                "Nulos": [
+                    df_unificado[col].isna().sum() for col in df_unificado.columns
+                ],
+            }
+        )
         st.dataframe(col_desc)
 
     if st.checkbox("Mostrar estadísticas descriptivas"):
@@ -194,12 +207,12 @@ elif page == "🔍 Análisis Exploratorio":
         )
         fig_via = px.pie(
             frecuencia_via,
-            names='Via_Ingreso_Desc',
-            values='Frecuencia',
-            title='Distribución de las vías de ingreso',
-            color_discrete_sequence=px.colors.qualitative.Set2
+            names="Via_Ingreso_Desc",
+            values="Frecuencia",
+            title="Distribución de las vías de ingreso",
+            color_discrete_sequence=px.colors.qualitative.Set2,
         )
-        fig_via.update_traces(textinfo='label+percent+value')
+        fig_via.update_traces(textinfo="label+percent+value")
         st.plotly_chart(fig_via, use_container_width=True)
     # ===========================================
     # Distribución por Estado de Salida
@@ -219,9 +232,11 @@ elif page == "🔍 Análisis Exploratorio":
             names="Estado_Salida",
             values="Frecuencia",
             title="Distribución de pacientes según Estado de Salida",
-            color_discrete_sequence=px.colors.qualitative.Set3
+            color_discrete_sequence=px.colors.qualitative.Set3,
         )
-        fig_estado.update_traces(textinfo="label+percent+value")  # Mostrar etiqueta, %, y valor
+        fig_estado.update_traces(
+            textinfo="label+percent+value"
+        )  # Mostrar etiqueta, %, y valor
         st.plotly_chart(fig_estado, use_container_width=True)
 
     else:
@@ -235,13 +250,15 @@ elif page == "🔍 Análisis Exploratorio":
     if "SEXO" in df_unificado.columns:
         # Reemplazar etiquetas
         df_sexo = df_unificado["SEXO"].replace({"M": "Masculino", "F": "Femenino"})
-        
+
         # Contar frecuencia
-        sexo_counts = df_sexo.value_counts().rename_axis("Sexo").reset_index(name="Frecuencia")
-        
+        sexo_counts = (
+            df_sexo.value_counts().rename_axis("Sexo").reset_index(name="Frecuencia")
+        )
+
         # Definir colores
         colores = {"Masculino": "#aec6cf", "Femenino": "#ffb6c1"}  # azul y rosado
-        
+
         # Crear gráfico de torta
         fig_sexo_pie = px.pie(
             sexo_counts,
@@ -249,15 +266,16 @@ elif page == "🔍 Análisis Exploratorio":
             values="Frecuencia",
             title="Distribución por sexo de los pacientes",
             color="Sexo",
-            color_discrete_map=colores
+            color_discrete_map=colores,
         )
-        
-        fig_sexo_pie.update_traces(textinfo="label+percent+value")  # Mostrar etiqueta, %, y valor
+
+        fig_sexo_pie.update_traces(
+            textinfo="label+percent+value"
+        )  # Mostrar etiqueta, %, y valor
         st.plotly_chart(fig_sexo_pie, use_container_width=True)
 
     else:
         st.warning("⚠️ La columna 'SEXO' no existe en el dataset.")
-
 
     # ===========================================
     # Histograma de edades (sin negativos)
@@ -275,15 +293,15 @@ elif page == "🔍 Análisis Exploratorio":
                 x=edades,
                 nbins=num_clases,
                 title="Histograma de edades de los pacientes",
-                color_discrete_sequence=['#636EFA'],
+                color_discrete_sequence=["#636EFA"],
                 marginal="box",
                 labels={"x": "Edad (años)", "y": "Frecuencia"},
-                text_auto=True
+                text_auto=True,
             )
 
             fig_hist.update_layout(
                 bargap=0.05,
-                xaxis=dict(range=[0, edades.max() + 5])  # evita valores negativos
+                xaxis=dict(range=[0, edades.max() + 5]),  # evita valores negativos
             )
 
             st.plotly_chart(fig_hist, use_container_width=True)
@@ -292,8 +310,6 @@ elif page == "🔍 Análisis Exploratorio":
     else:
         st.warning("⚠️ La columna 'EDAD_ANIOS' no existe en el dataset.")
 
-
-    
     # ===========================================
     # Histograma de duración de hospitalización (Plotly mejorado)
     # ===========================================
@@ -319,11 +335,11 @@ elif page == "🔍 Análisis Exploratorio":
                 duracion_filtrada,
                 x=duracion_filtrada,
                 nbins=num_clases,
-                color_discrete_sequence=['#A8E6A3'],  # verde pastel
+                color_discrete_sequence=["#A8E6A3"],  # verde pastel
                 marginal="box",
                 title="Histograma de duración de hospitalización (≤ 60 días)",
                 labels={"x": "Duración (días)", "y": "Frecuencia"},
-                text_auto=True  # mostrar frecuencia sobre las barras
+                text_auto=True,  # mostrar frecuencia sobre las barras
             )
 
             # Ajustes de layout
@@ -332,29 +348,30 @@ elif page == "🔍 Análisis Exploratorio":
                 bargap=0.05,
                 yaxis_title="Frecuencia",
                 title_font=dict(size=15),
-                template="plotly_white"
+                template="plotly_white",
             )
 
             # Mostrar límites de clase reales en el eje X
             fig_duracion.update_xaxes(
-                tickmode='linear',
+                tickmode="linear",
                 dtick=ancho_clases,
                 tick0=duracion_filtrada.min(),
-                tickfont=dict(size=10)
+                tickfont=dict(size=10),
             )
 
             # Mostrar gráfico
             st.plotly_chart(fig_duracion, use_container_width=True)
 
             # Mostrar información de clases calculadas
-            st.caption(f"📏 Rango: {rango:.1f} días | Clases: {num_clases} | Ancho de clase: {ancho_clases:.2f} días")
+            st.caption(
+                f"📏 Rango: {rango:.1f} días | Clases: {num_clases} | Ancho de clase: {ancho_clases:.2f} días"
+            )
 
         else:
             st.info("ℹ️ No hay datos disponibles en la columna 'Duracion_Dias'.")
     else:
         st.warning("⚠️ La columna 'Duracion_Dias' no existe en el dataset.")
 
-   
     # ===========================================
     # Top 10 diagnósticos principales como mapa de calor vertical
     # ===========================================
@@ -374,13 +391,15 @@ elif page == "🔍 Análisis Exploratorio":
             top_diagnosticos[["Frecuencia"]],  # Mantener como columna única
             labels=dict(x="Frecuencia", y="Diagnóstico", color="Frecuencia"),
             y=top_diagnosticos["Diagnóstico"],  # Diagnósticos en filas
-            x=["Frecuencia"],                    # Solo una columna
+            x=["Frecuencia"],  # Solo una columna
             text_auto=True,
             color_continuous_scale="Oranges",
-            title="Top 10 diagnósticos principales (Dx Principal egreso)"
+            title="Top 10 diagnósticos principales (Dx Principal egreso)",
         )
 
-        fig_dx_heat.update_xaxes(showticklabels=False)  # Ocultamos etiquetas de la columna única
+        fig_dx_heat.update_xaxes(
+            showticklabels=False
+        )  # Ocultamos etiquetas de la columna única
         st.plotly_chart(fig_dx_heat, use_container_width=True)
 
     else:
@@ -414,14 +433,14 @@ elif page == "🔍 Análisis Exploratorio":
             text="Frecuencia",
             title="Distribución de causas externas",
             color="Causa_Externa_Desc",
-            color_discrete_sequence=colores
+            color_discrete_sequence=colores,
         )
 
         # Actualizar layout: eje y con nombre personalizado y quitar leyenda
         fig_causa.update_layout(
             yaxis_title="Causa Externa",
             yaxis=dict(autorange="reversed"),
-            showlegend=False
+            showlegend=False,
         )
 
         st.plotly_chart(fig_causa, use_container_width=True)
@@ -437,6 +456,7 @@ elif page == "🔍 Análisis Exploratorio":
 # SECCIÓN: 🤖 MODELO PREDICTIVO
 # ======================================================
 
+
 # --- Funciones auxiliares (van fuera de la condición de página) ---
 def crear_grafo(df: pd.DataFrame, dx_central: str) -> nx.Graph:
     """Crea un grafo con colores según OR y grosor según coocurrencia."""
@@ -446,7 +466,10 @@ def crear_grafo(df: pd.DataFrame, dx_central: str) -> nx.Graph:
     cmap = cm.get_cmap("YlOrRd")
 
     for _, row in df.iterrows():
-        for dx, desc in [(row["Dx1"], row.get("Desc1", "")), (row["Dx2"], row.get("Desc2", ""))]:
+        for dx, desc in [
+            (row["Dx1"], row.get("Desc1", "")),
+            (row["Dx2"], row.get("Desc2", "")),
+        ]:
             if dx not in G.nodes:
                 G.add_node(
                     dx,
@@ -460,10 +483,11 @@ def crear_grafo(df: pd.DataFrame, dx_central: str) -> nx.Graph:
         width = min(max(row["count_coocurrence"] / 5, 2), 8)
 
         G.add_edge(
-            row["Dx1"], row["Dx2"],
+            row["Dx1"],
+            row["Dx2"],
             color=hex_color,
             width=width,
-            title=f"Coocurrencias: {row['count_coocurrence']} | OR={row['OR']:.2f}"
+            title=f"Coocurrencias: {row['count_coocurrence']} | OR={row['OR']:.2f}",
         )
 
     return G
@@ -487,12 +511,16 @@ if page == "🤖 Modelo Predictivo":
     # Cargar datasets procesados
     if "datasets_locales" not in st.session_state:
         with st.spinner("Cargando archivos procesados..."):
-            st.session_state["datasets_locales"] = cargar_datasets_locales(PROCESSED_DATA_DIR)
+            st.session_state["datasets_locales"] = cargar_datasets_locales(
+                PROCESSED_DATA_DIR
+            )
 
     datasets = st.session_state["datasets_locales"]
 
     if "analisis_coocurrencias_significativas" not in datasets:
-        st.warning("⚠️ No se encontró el archivo 'analisis_coocurrencias_significativas.xlsx'.")
+        st.warning(
+            "⚠️ No se encontró el archivo 'analisis_coocurrencias_significativas.xlsx'."
+        )
     else:
         df_cooc = datasets["analisis_coocurrencias_significativas"]
 
@@ -500,7 +528,9 @@ if page == "🤖 Modelo Predictivo":
         # 1️⃣ Checkbox – Análisis general
         # ======================================================
         if st.checkbox("📊 Análisis de concurrencias significativas"):
-            st.markdown(f"**{len(df_cooc):,} asociaciones significativas encontradas.**")
+            st.markdown(
+                f"**{len(df_cooc):,} asociaciones significativas encontradas.**"
+            )
             st.dataframe(df_cooc)
 
         # ======================================================
@@ -509,7 +539,7 @@ if page == "🤖 Modelo Predictivo":
         if st.checkbox("🔗 Asociaciones fuertes con filtro por diagnóstico"):
             desc_map = {
                 **dict(zip(df_cooc["Dx1"], df_cooc["Desc1"])),
-                **dict(zip(df_cooc["Dx2"], df_cooc["Desc2"]))
+                **dict(zip(df_cooc["Dx2"], df_cooc["Desc2"])),
             }
 
             opciones = [
@@ -523,7 +553,9 @@ if page == "🤖 Modelo Predictivo":
                 (df_cooc["Dx1"] == dx_sel) | (df_cooc["Dx2"] == dx_sel)
             ].sort_values("OR", ascending=False)
 
-            st.markdown(f"### {len(df_filtrado)} asociaciones con **{dx_sel} — {desc_map.get(dx_sel, 'Sin descripción')}**")
+            st.markdown(
+                f"### {len(df_filtrado)} asociaciones con **{dx_sel} — {desc_map.get(dx_sel, 'Sin descripción')}**"
+            )
             st.dataframe(df_filtrado)
 
             # Gráfico descriptivo
@@ -534,7 +566,7 @@ if page == "🤖 Modelo Predictivo":
                 color="OR",
                 size="count_coocurrence",
                 hover_data=["Dx1", "Dx2", "Desc1", "Desc2"],
-                title=f"Relación entre {dx_sel} y otros diagnósticos"
+                title=f"Relación entre {dx_sel} y otros diagnósticos",
             )
             st.plotly_chart(fig, use_container_width=True)
 
@@ -546,7 +578,9 @@ if page == "🤖 Modelo Predictivo":
 
 elif page == "📈 Dashboard":
     st.title("📈 Dashboard")
-    st.info("Visualización interactiva de los resultados y métricas clave. Gráficos dinámicos y filtros personalizables. 📉")
+    st.info(
+        "Visualización interactiva de los resultados y métricas clave. Gráficos dinámicos y filtros personalizables. 📉"
+    )
 
 elif page == "ℹ️ Acerca del Proyecto":
     st.title("ℹ️ Acerca del Proyecto")

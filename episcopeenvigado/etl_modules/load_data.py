@@ -547,10 +547,7 @@ def preparacion_dataset(df) -> bool:
         15: "OTRA",
     }
 
-    CAT_ESTADO_SALIDA = {
-        1: "VIVO",
-        2: "MUERTO"
-    }
+    CAT_ESTADO_SALIDA = {1: "VIVO", 2: "MUERTO"}
 
     # =========================
     # CONSTRUCCIÓN DE DIMENSIONES (con IDs sustitutos)
@@ -666,6 +663,7 @@ def preparacion_dataset(df) -> bool:
                 "EDAD",
                 "UNIDAD EDAD",
                 "EDAD_ANIOS",
+                "GRUPO EDAD",
                 "SEXO",
                 "MUNICIPIO_DANE",
                 "MUNICIPIO",
@@ -791,6 +789,7 @@ def crear_base_datos():
             `Estado_Salida`      VARCHAR(30),
             `EDAD`               SMALLINT,
             `UNIDAD EDAD`        SMALLINT,
+            `GRUPO EDAD`         SMALLINT,
             `EDAD_ANIOS`         DECIMAL(6,3),
             `SEXO`               CHAR(1),
             `MUNICIPIO`          SMALLINT,

@@ -25,6 +25,9 @@ def limpieza_datos(df: pd.DataFrame):
         lambda x: str(int(x)).zfill(2) if pd.notnull(x) else None
     )
 
+    # --- Via Ingreso valida ---
+    df = df[df["VIA INGRESO"].astype(str).isin(["1", "2", "3", "4"])]
+
     # --- Numérico para las llaves o códigos ---
     for c in [
         "VIA INGRESO",

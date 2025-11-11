@@ -102,6 +102,37 @@ def consolidar_3dig(df: pd.DataFrame, dx_cols: list) -> pd.DataFrame:
 
     return consolidado
 
+def consolidado_3dig_enriquecido(df: pd.DataFrame, dx_cols: list, info_cols: list, fecha_col: str = "FECHA_INGRESO") -> pd.DataFrame:
+    """
+    Consolida diagnósticos a 3 dígitos por paciente y agrega columnas adicionales
+    (EDAD_ANIOS, SEXO, etc.) tomando el primer registro por fecha de ingreso ascendente.
+    """
+    # Limpiar diagnósticos y truncar a 3 dígitos
+    df_dx = limpiar_diagnosticos(df[dx_cols])
+    for col in df_dx.columns:
+        df_dx[col] = df_dx[col].map(lambda x: str(x)[:3] if pd.notna(x) else None)
+
+    # Crear consolidado 3 dígitos por ID
+    consolidado_dx = df_dx.groupby(df["ID"]).agg(lambda x: list(x.dropna()))
+    consolidado_dx["dx_list_3dig"] = consolidado_dx.apply(
+        lambda row: [dx for dx in set(itertools.chain.from_iterable(row)) if dx not in [None, "NONE"]],
+        axis=1
+    )
+
+    # Excluir códigos Z y R
+    consolidado_dx["dx_list_3dig"] = consolidado_dx["dx_list_3dig"].apply(
+        lambda l: [dx for dx in l if dx[0] not in ["Z", "R"]]
+    )
+    consolidado_dx = consolidado_dx.reset_index()
+
+    # Tomar primera fila por ID para info_cols
+    df_sorted = df.sort_values(by=[fecha_col])
+    df_info = df_sorted.groupby("ID")[info_cols].first().reset_index()
+
+    # Merge consolidado dx + info
+    consolidado_enriquecido = consolidado_dx.merge(df_info, on="ID", how="left")
+    return consolidado_enriquecido
+
 
 def calcular_frecuencias(
     consolidado_4dig: pd.DataFrame, cie: pd.DataFrame
@@ -228,7 +259,9 @@ if __name__ == "__main__":
     logger.info("🚀 Iniciando análisis de coocurrencia de diagnósticos...")
 
     try:
-        # 1. CARGA DE DATOS DESDE EL MÓDULO DE DATASET
+        # ======================================================
+        # 1. CARGA DE DATOS
+        # ======================================================
         t0 = time.time()
         episcope_data = ds.obtener_dataset_completo()
         dim_fact = episcope_data["fact_atenciones"]
@@ -239,7 +272,9 @@ if __name__ == "__main__":
         )
         logger.debug(f"⏱ Tiempo carga datos: {(time.time() - t0):.2f}s")
 
+        # ======================================================
         # 2. DEFINICIÓN DE COLUMNAS DE DIAGNÓSTICOS
+        # ======================================================
         dx_cols = [
             "DIAGNOSTICO INGRESO",
             "Cod_Dx_Ppal_Egreso",
@@ -251,7 +286,9 @@ if __name__ == "__main__":
         ]
         dx_cols = [col for col in dx_cols if col in dim_fact.columns]
 
+        # ======================================================
         # 3. CONSOLIDADO 4 DÍGITOS
+        # ======================================================
         t1 = time.time()
         consolidado_4dig = consolidar_4dig(dim_fact, dx_cols)
         consolidado_export = consolidado_4dig[["dx_list_4dig"]].reset_index()
@@ -261,19 +298,38 @@ if __name__ == "__main__":
         exportar_excel(consolidado_export, "consolidado_por_usuario_4dig.xlsx")
         logger.debug(f"⏱ Tiempo consolidado 4 dígitos: {(time.time() - t1):.2f}s")
 
+        # ======================================================
         # 4. FRECUENCIAS CIE-4
+        # ======================================================
         t2 = time.time()
         resumen_dx4 = calcular_frecuencias(consolidado_4dig, dim_cie10)
         exportar_excel(resumen_dx4, "frecuencia_diagnosticos_CIE4.xlsx")
         logger.debug(f"⏱ Tiempo frecuencias: {(time.time() - t2):.2f}s")
 
+        # ======================================================
         # 5. CONSOLIDADO Y MATRIZ 3 DÍGITOS
+        # ======================================================
         t3 = time.time()
         consolidado_3dig = consolidar_3dig(dim_fact, dx_cols)
         matriz, diagnosticos_unicos = crear_matriz_binaria(consolidado_3dig)
         logger.debug(f"⏱ Tiempo consolidado 3 dígitos: {(time.time() - t3):.2f}s")
 
+        # 5a. CONSOLIDADO 3 DÍGITOS ENRIQUECIDO (EDAD y SEXO)
+        info_cols = [col for col in ["EDAD_ANIOS","SEXO"] if col in dim_fact.columns]
+        consolidado_3dig_enriq = consolidado_3dig_enriquecido(
+            dim_fact, dx_cols, info_cols, fecha_col="Fecha_Ingreso"
+        )
+
+        # Seleccionar solo las columnas finales deseadas
+        consolidado_3dig_enriq = consolidado_3dig_enriq[["ID", "dx_list_3dig"] + info_cols]
+        consolidado_3dig_enriq.rename(columns={"dx_list_3dig": "diagnosticos_3dig"}, inplace=True)
+
+        # Exportar
+        exportar_excel(consolidado_3dig_enriq, "consolidado_por_usuario_3dig_enriquecido.xlsx")
+
+        # ======================================================
         # 6. ANÁLISIS ESTADÍSTICO DE COOCURRENCIAS
+        # ======================================================
         t4 = time.time()
         cie_dict_3 = dim_cie10.set_index("cie_3cat")["desc_3cat"].to_dict()
         resultados_cooc = analizar_coocurrencias_estadistico(
@@ -281,14 +337,20 @@ if __name__ == "__main__":
         )
         logger.debug(f"⏱ Tiempo análisis coocurrencias: {(time.time() - t4):.2f}s")
 
+        # ======================================================
         # 7. FILTRAR ASOCIACIONES SIGNIFICATIVAS
+        # ======================================================
         t5 = time.time()
         resultados_signif = resultados_cooc[resultados_cooc["p_value_adj"] < 0.05]
         exportar_excel(resultados_signif, "analisis_coocurrencias_significativas.xlsx")
 
+        # ======================================================
+        # FINALIZACIÓN
+        # ======================================================
         logger.success(
             f"🏁 Análisis completado en {(time.time() - start_time) / 60:.2f} minutos."
         )
 
     except Exception as e:
         logger.error(f"❌ Error durante la ejecución: {e}")
+

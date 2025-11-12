@@ -40,6 +40,7 @@ dependencies = [
     "pyvis>=0.3.2",
     "matplotlib>=3.10.7",
     "seaborn>=0.13.2",
+    "dotenv>=0.9.9",
 ]
 requires-python = "~=3.13.0"
 

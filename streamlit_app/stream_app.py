@@ -1,8 +1,12 @@
+from pathlib import Path
 import streamlit as st
+
 import os
 import pandas as pd
 import numpy as np
 import plotly.express as px
+
+
 from episcopeenvigado.dataset import (
     obtener_dataset_completo,
     cargar_datasets_locales,
@@ -15,6 +19,7 @@ import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 from io import StringIO
 
+
 # ==============================================
 # CONFIGURACIÓN GENERAL
 # ==============================================
@@ -22,6 +27,7 @@ st.set_page_config(
     page_title="EpiScope Envigado",
     page_icon="🏥",
     layout="wide",
+    initial_sidebar_state="expanded",
 )
 
 # Logo
@@ -37,10 +43,16 @@ page = st.sidebar.radio(
         "🏠 Home",
         "🔍 Análisis Exploratorio",
         "🤖 Modelo Predictivo",
-        "📈 Dashboard",
+        "📈 Modelo Predictivo RandomForest",
         "ℹ️ Acerca del Proyecto",
     ],
 )
+
+##
+##Con las siguiente líneas se puede vincular páginas puntuales, al darle click cargarían a la derecha todo el archivo entero
+## Eso evita que se tengan que recargar en este sólo archivo todo
+
+
 st.sidebar.markdown("---")
 st.sidebar.markdown("👩‍💻 *Proyecto desarrollado por:*")
 st.sidebar.markdown("**Equipo EpiScope Envigado**")

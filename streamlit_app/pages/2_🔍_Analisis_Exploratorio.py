@@ -6,58 +6,6 @@ from utils_sidebar import mostrar_sidebar
 from episcopeenvigado.dataset import obtener_dataset_completo, unificar_dataset
 
 
-# =========================================================
-#  ESTILOS PARA MOSTRAR DATOS
-# =========================================================
-st.markdown(
-    """
-    <style>
-    .grafico-marco {
-        color: #1e1e1e;
-        background: linear-gradient(180deg, #ffffff 0%, #f7f8fa 100%);
-        border: 1px solid rgba(0, 0, 0, 0.08);
-        border-left: 6px solid #5b10ad; /* acento corporativo */
-        border-radius: 10px;
-        box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08);
-        padding: 0.5em 1.8em;
-        margin-bottom: 1.8em;
-        width: 200px;
-        transition: all 0.25s ease-in-out;
-        font-weight: bolder;
-        font-size: larger;            
-    }
-
-    .grafico-marco:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
-        border-left-color: #00c0e2; /* efecto hover con color secundario */
-    }
-    .stButton > button {
-        background-color: #a7c957;
-        color: white;
-        border: none;
-        padding: 0.6em 1.2em;
-        border-radius: 8px;
-        font-size: 16px;
-        font-weight: 400;
-        transition: all 0.2s ease-in-out;
-    }
-    .stButton > button:hover {
-        background-color: #0077b6;
-        transform: scale(1.03);
-    }
-    .titulo-h3 {
-        font-size: 20px;
-        font-weight: 600;
-        margin-top: -0.2em;
-        margin-bottom: 1em;
-    }        
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-
 def main():
     mostrar_sidebar()
     st.title("🔍 Análisis Exploratorio de los RIPS")

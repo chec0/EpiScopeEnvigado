@@ -1,5 +1,6 @@
 # Data
 /data/raw/RIPS_20232024_HOSP.xlsx
+/data/processed/
 
 # Config Database
 /episcopeenvigado/etl_modules/_config.py

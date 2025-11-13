@@ -19,51 +19,37 @@ Proporciona una base reproducible, modular y colaborativa para desarrollar proye
 
 ## 🗂️ Estructura del proyecto
 ```
-├── LICENSE            <- Licencia de código abierto (si aplica)
-├── Makefile           <- Makefile con comandos útiles como make data o make train
-├── README.md          <- Archivo principal de documentación para desarrolladores. Estás aquí 🚀
+EPISCOPEENVIGADO
+├── .venv/                  <- Entorno virtual creado automáticamente por uv
+│
 ├── data
-│   ├── external       <- Datos provenientes de fuentes externas.
-│   ├── interim        <- Datos intermedios que han sido transformados.
-│   ├── processed      <- Conjuntos de datos finales y listos para modelar.
-│   └── raw            <- Datos originales, sin procesar e inmutables.
+│   ├── processed           <- Conjuntos de datos finales y listos para modelar.
+│   └── raw                 <- Datos originales, sin procesar e inmutables.
 │
-├── docs               <- Proyecto base para documentación con mkdocs; ver www.mkdocs.org para más detalles
+├── docs                    <- Documento final del proyecto.
 │
-├── models             <- Modelos entrenados y serializados, predicciones o resúmenes de modelos
+├── episcopeenvigado        <- Proceso ETL y modelos.
+│   ├── init.py             <- Convierte episcopeenvigado en un módulo de Python.
+│   ├── app.py              <- Modulo principal del proyecto.
+│   ├── config.py           <- Variables globales, rutas, parámetros de configuración.
+│   ├── dataset.py          <- Scripts para descargar o generar datos.
+│   └── diagnosticoOp.py    <- Modulo para el análisis de coocurrencias.
+│   
+├── notebooks               <- Notebooks de Jupyter de soporte para los procesos y las validaciones.
 │
-├── notebooks          <- Notebooks de Jupyter. Convención de nombres: número (para ordenar),
-│                         iniciales del autor y una breve descripción separada por guiones, por ejemplo:
-│                         1.0-jqp-exploracion-inicial-datos.
+├── streamlit_app           <- Creación del dashboard de visualización y exploración interactiva en Streamlit 
 │
-├── pyproject.toml     <- Dependencias del proyecto (gestionadas con uv)
+├── .gitignore              <- Ignora .venv/, data grandes, checkpoints, etc.
 │
-├── references         <- Diccionarios de datos, manuales y otros materiales de referencia.
+├── Makefile                <- Makefile con comandos útiles como make data o make train
 │
-├── reports            <- Análisis generados en formato HTML, PDF, LaTeX, etc.
-│   └── figures        <- Gráficos y figuras generadas para los reportes
+├── pyproject.toml          <- Dependencias del proyecto (gestionadas con uv)
 │
-├── requirements.txt   <- Archivo de dependencias para reproducir el entorno de análisis, por ejemplo:
-│                         generado con pip freeze > requirements.txt
+├── README.md               <- Archivo principal de documentación.
 │
-├── setup.cfg          <- Archivo de configuración para flake8
+├── setup.cfg               <- Archivo de configuración para flake8
 │
-└── {{ cookiecutter.module_name }}   <- Código fuente utilizado en este proyecto.
-│
-├── init.py             <- Convierte {{ cookiecutter.module_name }} en un módulo de Python
-│
-├── config.py               <- Variables y configuraciones útiles
-│
-├── dataset.py              <- Scripts para descargar o generar datos
-│
-├── features.py             <- Código para crear características (features) para modelado
-│
-├── modeling
-│   ├── init.py
-│   ├── predict.py          <- Código para ejecutar inferencias con modelos entrenados
-│   └── train.py            <- Código para entrenar modelos
-│
-└── plots.py                <- Código para generar visualizaciones
+└── uv.lock                 <- Archivo de bloqueo con versiones exactas de dependencias
 ```
 ---
 ## ⚙️ Instrucciones de configuración
